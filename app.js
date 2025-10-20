@@ -19,7 +19,9 @@ const carDatabase = {
             'Transmission': '8-Speed Automatic',
             'Drivetrain': 'AWD'
         },
-        color: 0xe82127
+        color: 0xe82127, // Red
+        accentColor: 0xff4444,
+        style: 'aggressive'
     },
     suv: {
         name: 'Luxury SUV',
@@ -33,7 +35,9 @@ const carDatabase = {
             'Transmission': '9-Speed Automatic',
             'Drivetrain': 'AWD'
         },
-        color: 0x1a1a1a
+        color: 0x0a0a0a, // Matte Black
+        accentColor: 0x444444,
+        style: 'luxury'
     },
     sedan: {
         name: 'Executive Sedan',
@@ -47,7 +51,9 @@ const carDatabase = {
             'Transmission': '10-Speed Automatic',
             'Drivetrain': 'RWD'
         },
-        color: 0x2c3e50
+        color: 0x1e3a5f, // Deep Blue
+        accentColor: 0x3498db,
+        style: 'elegant'
     },
     electric: {
         name: 'Electric GT',
@@ -61,7 +67,9 @@ const carDatabase = {
             'Motors': 'Tri-Motor AWD',
             'Horsepower': '1020 hp'
         },
-        color: 0x00ff88
+        color: 0xcccccc, // Silver/White
+        accentColor: 0x00ff88, // Neon Green accents
+        style: 'futuristic'
     }
 };
 
@@ -185,13 +193,21 @@ function createCar(type) {
     // Materials
     const bodyMaterial = new THREE.MeshStandardMaterial({
         color: carColor,
-        metalness: 0.9,
-        roughness: 0.1,
+        metalness: type === 'suv' ? 0.3 : 0.9, // Matte finish for SUV
+        roughness: type === 'suv' ? 0.8 : 0.1,
         envMapIntensity: 1
     });
     
+    const accentMaterial = new THREE.MeshStandardMaterial({
+        color: carData.accentColor,
+        metalness: 0.9,
+        roughness: 0.1,
+        emissive: type === 'electric' ? carData.accentColor : 0x000000,
+        emissiveIntensity: type === 'electric' ? 0.3 : 0
+    });
+    
     const glassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x88ccff,
+        color: type === 'electric' ? 0x88ffcc : 0x88ccff,
         metalness: 0,
         roughness: 0,
         transmission: 0.9,
@@ -206,9 +222,11 @@ function createCar(type) {
     });
     
     const rimMaterial = new THREE.MeshStandardMaterial({
-        color: 0xcccccc,
+        color: type === 'electric' ? carData.accentColor : (type === 'sports' ? 0xff0000 : 0xcccccc),
         metalness: 1,
-        roughness: 0.1
+        roughness: 0.1,
+        emissive: type === 'electric' ? carData.accentColor : 0x000000,
+        emissiveIntensity: type === 'electric' ? 0.2 : 0
     });
     
     // Car body dimensions based on type
@@ -318,7 +336,7 @@ function createCar(type) {
     // Spoiler for sports car
     if (type === 'sports') {
         const spoilerGeometry = new THREE.BoxGeometry(bodyWidth - 0.4, 0.1, 0.6);
-        const spoiler = new THREE.Mesh(spoilerGeometry, bodyMaterial);
+        const spoiler = new THREE.Mesh(spoilerGeometry, accentMaterial);
         spoiler.position.set(0, 1.2, -bodyLength / 2 + 0.3);
         currentCar.add(spoiler);
         
@@ -330,6 +348,47 @@ function createCar(type) {
         const support2 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
         support2.position.set(0.6, 1.05, -bodyLength / 2 + 0.3);
         currentCar.add(support2);
+        
+        // Racing stripes
+        const stripeGeometry = new THREE.BoxGeometry(0.3, 0.01, bodyLength * 0.9);
+        const stripe = new THREE.Mesh(stripeGeometry, accentMaterial);
+        stripe.position.set(0, bodyHeight + 0.51, 0);
+        currentCar.add(stripe);
+    }
+    
+    // Chrome trim for SUV
+    if (type === 'suv') {
+        const trimGeometry = new THREE.BoxGeometry(bodyWidth + 0.05, 0.1, bodyLength);
+        const trim = new THREE.Mesh(trimGeometry, rimMaterial);
+        trim.position.set(0, 0.2, 0);
+        currentCar.add(trim);
+    }
+    
+    // Side accent for sedan
+    if (type === 'sedan') {
+        const sideAccentGeometry = new THREE.BoxGeometry(0.05, 0.2, bodyLength * 0.7);
+        const sideAccent1 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent1.position.set(bodyWidth / 2 + 0.05, 0.6, 0);
+        currentCar.add(sideAccent1);
+        
+        const sideAccent2 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent2.position.set(-bodyWidth / 2 - 0.05, 0.6, 0);
+        currentCar.add(sideAccent2);
+    }
+    
+    // Underglow for electric car
+    if (type === 'electric') {
+        const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.2, 0.05, bodyLength - 0.5);
+        const underglowMaterial = new THREE.MeshStandardMaterial({
+            color: carData.accentColor,
+            emissive: carData.accentColor,
+            emissiveIntensity: 1,
+            transparent: true,
+            opacity: 0.8
+        });
+        const underglow = new THREE.Mesh(underglowGeometry, underglowMaterial);
+        underglow.position.set(0, -0.3, 0);
+        currentCar.add(underglow);
     }
     
     currentCar.position.y = 0;

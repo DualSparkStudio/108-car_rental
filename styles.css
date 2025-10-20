@@ -230,6 +230,44 @@ html {
     border-color: var(--text-primary);
 }
 
+/* View More Button */
+.view-more-container {
+    text-align: center;
+    margin: 2rem 0 3rem;
+}
+
+.view-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 2.5rem;
+    background: transparent;
+    color: var(--text-primary);
+    border: 2px solid var(--text-primary);
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+    letter-spacing: 0.5px;
+}
+
+.view-more-btn:hover {
+    background: var(--text-primary);
+    color: var(--primary-bg);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+}
+
+.view-more-btn .arrow {
+    font-size: 1.5rem;
+    transition: transform 0.3s;
+}
+
+.view-more-btn:hover .arrow {
+    transform: translateX(5px);
+}
+
 /* 3D Viewer Container */
 .viewer-container {
     max-width: 1400px;
