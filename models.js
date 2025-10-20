@@ -1,3 +1,55 @@
+// Three.js variables for detail view
+let detailScene, detailCamera, detailRenderer, detailCurrentCar;
+let detailIsDragging = false;
+let detailPreviousMouseX = 0, detailPreviousMouseY = 0;
+let detailTargetRotationX = 0, detailTargetRotationY = 0;
+let detailAnimationId = null;
+
+// Car visual configurations
+const carVisualConfig = {
+    sports: { 
+        color: 0xe82127, 
+        accentColor: 0xff4444, 
+        style: 'aggressive',
+        bodyHeight: 0.9,
+        bodyLength: 4,
+        hasSpoiler: true,
+        hasStripes: true
+    },
+    suv: { 
+        color: 0x0a0a0a, 
+        accentColor: 0x444444, 
+        style: 'luxury',
+        bodyHeight: 1.6,
+        bodyLength: 4.5,
+        hasTrim: true
+    },
+    sedan: { 
+        color: 0x1e3a5f, 
+        accentColor: 0x3498db, 
+        style: 'elegant',
+        bodyHeight: 1.2,
+        bodyLength: 4,
+        hasSideAccent: true
+    },
+    electric: { 
+        color: 0xcccccc, 
+        accentColor: 0x00ff88, 
+        style: 'futuristic',
+        bodyHeight: 1.0,
+        bodyLength: 4,
+        hasUnderglow: true
+    },
+    luxury: { 
+        color: 0x1a1a2e, 
+        accentColor: 0xc7a26a, 
+        style: 'premium',
+        bodyHeight: 1.3,
+        bodyLength: 4.8,
+        hasChrome: true
+    }
+};
+
 // Complete Car Database with 12 models
 const allCars = [
     {
@@ -306,52 +358,47 @@ function filterCars(category) {
     });
 }
 
-// Show car details in modal
+// Show car details with 3D viewer
 function showCarDetails(carId) {
     const car = allCars.find(c => c.id === carId);
     if (!car) return;
     
-    const modalContent = document.getElementById('modalContent');
-    modalContent.innerHTML = `
-        <div class="modal-car-details">
-            <div class="modal-car-image" style="background-image: url('${car.image}')"></div>
-            <div class="modal-car-info">
-                <div class="modal-badge">${car.category.toUpperCase()}</div>
-                <h2>${car.name}</h2>
-                <p class="modal-description">${car.description}</p>
-                
-                <div class="modal-pricing">
-                    <div class="modal-price-item">
-                        <h4>Purchase Price</h4>
-                        <p class="modal-price">$${car.price.toLocaleString()}</p>
-                    </div>
-                    <div class="modal-price-item">
-                        <h4>Rental Rate</h4>
-                        <p class="modal-price">$${car.rentPrice}/day</p>
-                    </div>
-                </div>
-                
-                <div class="modal-specs">
-                    <h3>Specifications</h3>
-                    <div class="modal-specs-grid">
-                        ${Object.entries(car.specs).map(([key, value]) => `
-                            <div class="modal-spec-item">
-                                <span class="modal-spec-label">${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</span>
-                                <span class="modal-spec-value">${value}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="modal-buy-btn" onclick="buyNow(${car.id})">Buy Now</button>
-                    <button class="modal-rent-btn" onclick="rentNow(${car.id})">Rent Now</button>
-                </div>
-            </div>
-        </div>
-    `;
+    // Hide models grid and show detail section
+    document.querySelector('.models-section').style.display = 'none';
+    document.querySelector('.filter-section').style.display = 'none';
+    document.getElementById('carDetailSection').style.display = 'block';
     
-    document.getElementById('carModal').style.display = 'block';
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Update detail information
+    document.getElementById('detailBadge').textContent = car.category.toUpperCase();
+    document.getElementById('detailTitle').textContent = car.name;
+    document.getElementById('detailDescription').textContent = car.description;
+    document.getElementById('detailBuyPrice').textContent = `$${car.price.toLocaleString()}`;
+    document.getElementById('detailRentPrice').textContent = `$${car.rentPrice}/day`;
+    
+    // Update specifications
+    const specsGrid = document.getElementById('detailSpecsGrid');
+    specsGrid.innerHTML = '';
+    Object.entries(car.specs).forEach(([label, value]) => {
+        const specItem = document.createElement('div');
+        specItem.className = 'detail-spec-item';
+        specItem.innerHTML = `
+            <div class="detail-spec-label">${label.charAt(0).toUpperCase() + label.slice(1).replace(/([A-Z])/g, ' $1')}</div>
+            <div class="detail-spec-value">${value}</div>
+        `;
+        specsGrid.appendChild(specItem);
+    });
+    
+    // Setup buy/rent button handlers
+    document.getElementById('detailBuyBtn').onclick = () => buyNow(car.id);
+    document.getElementById('detailRentBtn').onclick = () => rentNow(car.id);
+    
+    // Initialize 3D viewer
+    setTimeout(() => {
+        init3DDetailViewer(car);
+    }, 100);
 }
 
 // Close modal
@@ -377,6 +424,493 @@ function rentNow(carId) {
     const car = allCars.find(c => c.id === carId);
     alert(`Proceeding to rent ${car.name} for $${car.rentPrice}/day. Our rental team will contact you to arrange pickup.`);
     closeCarModal();
+}
+
+// Close detail view and return to grid
+function closeDetailView() {
+    // Stop animation loop
+    if (detailAnimationId) {
+        cancelAnimationFrame(detailAnimationId);
+        detailAnimationId = null;
+    }
+    
+    // Clean up Three.js
+    if (detailRenderer) {
+        detailRenderer.dispose();
+        detailRenderer = null;
+    }
+    if (detailScene) {
+        detailScene = null;
+    }
+    
+    // Reset rotation values
+    detailTargetRotationX = 0;
+    detailTargetRotationY = 0;
+    
+    // Show models grid and hide detail section
+    document.getElementById('carDetailSection').style.display = 'none';
+    document.querySelector('.filter-section').style.display = 'block';
+    document.querySelector('.models-section').style.display = 'block';
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Initialize 3D Detail Viewer
+function init3DDetailViewer(car) {
+    const canvas = document.getElementById('detailCanvas3d');
+    if (!canvas) return;
+    
+    // Clean up existing scene
+    if (detailRenderer) {
+        detailRenderer.dispose();
+    }
+    if (detailAnimationId) {
+        cancelAnimationFrame(detailAnimationId);
+    }
+    
+    // Scene
+    detailScene = new THREE.Scene();
+    detailScene.background = new THREE.Color(0x0a0a0a);
+    detailScene.fog = new THREE.Fog(0x0a0a0a, 10, 50);
+    
+    // Camera
+    detailCamera = new THREE.PerspectiveCamera(
+        45,
+        canvas.parentElement.clientWidth / canvas.parentElement.clientHeight,
+        0.1,
+        1000
+    );
+    detailCamera.position.set(8, 4, 12);
+    detailCamera.lookAt(0, 0, 0);
+    
+    // Renderer
+    detailRenderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+        alpha: true
+    });
+    detailRenderer.setSize(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight);
+    detailRenderer.setPixelRatio(window.devicePixelRatio);
+    detailRenderer.shadowMap.enabled = true;
+    detailRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    detailScene.add(ambientLight);
+    
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(5, 10, 5);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    detailScene.add(directionalLight1);
+    
+    const directionalLight2 = new THREE.DirectionalLight(0x4488ff, 0.3);
+    directionalLight2.position.set(-5, 5, -5);
+    detailScene.add(directionalLight2);
+    
+    const rimLight = new THREE.DirectionalLight(0xff4444, 0.4);
+    rimLight.position.set(0, 2, -10);
+    detailScene.add(rimLight);
+    
+    const spotLight = new THREE.SpotLight(0xffffff, 1);
+    spotLight.position.set(0, 15, 0);
+    spotLight.angle = Math.PI / 6;
+    spotLight.penumbra = 0.3;
+    spotLight.castShadow = true;
+    detailScene.add(spotLight);
+    
+    // Ground
+    const groundGeometry = new THREE.CircleGeometry(20, 64);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    ground.receiveShadow = true;
+    detailScene.add(ground);
+    
+    // Grid
+    const gridHelper = new THREE.GridHelper(20, 20, 0x333333, 0x1a1a1a);
+    gridHelper.position.y = -0.99;
+    detailScene.add(gridHelper);
+    
+    // Create car
+    create3DCar(car.category);
+    
+    // Event Listeners
+    canvas.addEventListener('mousedown', onDetailMouseDown);
+    canvas.addEventListener('mousemove', onDetailMouseMove);
+    canvas.addEventListener('mouseup', onDetailMouseUp);
+    canvas.addEventListener('wheel', onDetailWheel);
+    canvas.addEventListener('touchstart', onDetailTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onDetailTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onDetailTouchEnd);
+    
+    // Start animation
+    animateDetail();
+}
+
+// Create 3D Car Model
+function create3DCar(category) {
+    if (detailCurrentCar) {
+        detailScene.remove(detailCurrentCar);
+    }
+    
+    detailCurrentCar = new THREE.Group();
+    const config = carVisualConfig[category];
+    const carColor = config.color;
+    
+    // Materials
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: carColor,
+        metalness: category === 'suv' ? 0.3 : 0.9,
+        roughness: category === 'suv' ? 0.8 : 0.1,
+        envMapIntensity: 1
+    });
+    
+    const accentMaterial = new THREE.MeshStandardMaterial({
+        color: config.accentColor,
+        metalness: 0.9,
+        roughness: 0.1,
+        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissiveIntensity: category === 'electric' ? 0.3 : 0
+    });
+    
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+        color: category === 'electric' ? 0x88ffcc : 0x88ccff,
+        metalness: 0,
+        roughness: 0,
+        transmission: 0.9,
+        transparent: true,
+        opacity: 0.5
+    });
+    
+    const wheelMaterial = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.8,
+        roughness: 0.2
+    });
+    
+    const rimMaterial = new THREE.MeshStandardMaterial({
+        color: category === 'electric' ? config.accentColor : (category === 'sports' ? 0xff0000 : 0xcccccc),
+        metalness: 1,
+        roughness: 0.1,
+        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissiveIntensity: category === 'electric' ? 0.2 : 0
+    });
+    
+    // Car body dimensions
+    const bodyWidth = 1.8;
+    const bodyHeight = config.bodyHeight;
+    const bodyLength = config.bodyLength;
+    
+    // Main body
+    const bodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyLength);
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.5;
+    body.castShadow = true;
+    detailCurrentCar.add(body);
+    
+    // Cabin/Roof
+    const cabinWidth = bodyWidth - 0.2;
+    const cabinHeight = category === 'sports' ? 0.6 : (category === 'suv' ? 1.2 : 0.9);
+    const cabinLength = bodyLength * 0.6;
+    const cabinGeometry = new THREE.BoxGeometry(cabinWidth, cabinHeight, cabinLength);
+    const cabin = new THREE.Mesh(cabinGeometry, bodyMaterial);
+    cabin.position.y = bodyHeight / 2 + cabinHeight / 2 + 0.5;
+    cabin.position.z = category === 'sports' ? -0.3 : 0;
+    cabin.castShadow = true;
+    detailCurrentCar.add(cabin);
+    
+    // Windows
+    const windowGeometry = new THREE.BoxGeometry(cabinWidth - 0.1, cabinHeight - 0.2, cabinLength - 0.2);
+    const windows = new THREE.Mesh(windowGeometry, glassMaterial);
+    windows.position.copy(cabin.position);
+    detailCurrentCar.add(windows);
+    
+    // Hood
+    const hoodGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight * 0.7, bodyLength * 0.35);
+    const hood = new THREE.Mesh(hoodGeometry, bodyMaterial);
+    hood.position.y = 0.5;
+    hood.position.z = bodyLength * 0.425;
+    hood.castShadow = true;
+    detailCurrentCar.add(hood);
+    
+    // Trunk
+    const trunkGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight * 0.6, bodyLength * 0.25);
+    const trunk = new THREE.Mesh(trunkGeometry, bodyMaterial);
+    trunk.position.y = 0.5;
+    trunk.position.z = -bodyLength * 0.45;
+    trunk.castShadow = true;
+    detailCurrentCar.add(trunk);
+    
+    // Wheels
+    const wheelRadius = category === 'suv' ? 0.45 : 0.4;
+    const wheelWidth = 0.3;
+    const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 32);
+    const rimGeometry = new THREE.CylinderGeometry(wheelRadius * 0.6, wheelRadius * 0.6, wheelWidth + 0.05, 6);
+    
+    const wheelPositions = [
+        { x: bodyWidth / 2 + 0.15, z: bodyLength * 0.35 },
+        { x: -bodyWidth / 2 - 0.15, z: bodyLength * 0.35 },
+        { x: bodyWidth / 2 + 0.15, z: -bodyLength * 0.3 },
+        { x: -bodyWidth / 2 - 0.15, z: -bodyLength * 0.3 }
+    ];
+    
+    wheelPositions.forEach(pos => {
+        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(pos.x, 0, pos.z);
+        wheel.castShadow = true;
+        detailCurrentCar.add(wheel);
+        
+        const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+        rim.rotation.z = Math.PI / 2;
+        rim.position.set(pos.x, 0, pos.z);
+        detailCurrentCar.add(rim);
+    });
+    
+    // Headlights
+    const headlightGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const headlightMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffcc,
+        emissive: 0xffffaa,
+        emissiveIntensity: 0.5
+    });
+    
+    const headlightLeft = new THREE.Mesh(headlightGeometry, headlightMaterial);
+    headlightLeft.position.set(-bodyWidth / 2 + 0.2, 0.6, bodyLength / 2 + 0.1);
+    detailCurrentCar.add(headlightLeft);
+    
+    const headlightRight = new THREE.Mesh(headlightGeometry, headlightMaterial);
+    headlightRight.position.set(bodyWidth / 2 - 0.2, 0.6, bodyLength / 2 + 0.1);
+    detailCurrentCar.add(headlightRight);
+    
+    // Taillights
+    const taillightMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 0.3
+    });
+    
+    const taillightLeft = new THREE.Mesh(headlightGeometry, taillightMaterial);
+    taillightLeft.position.set(-bodyWidth / 2 + 0.2, 0.6, -bodyLength / 2 - 0.1);
+    detailCurrentCar.add(taillightLeft);
+    
+    const taillightRight = new THREE.Mesh(headlightGeometry, taillightMaterial);
+    taillightRight.position.set(bodyWidth / 2 - 0.2, 0.6, -bodyLength / 2 - 0.1);
+    detailCurrentCar.add(taillightRight);
+    
+    // Category-specific features
+    if (config.hasSpoiler) {
+        const spoilerGeometry = new THREE.BoxGeometry(bodyWidth - 0.4, 0.1, 0.6);
+        const spoiler = new THREE.Mesh(spoilerGeometry, accentMaterial);
+        spoiler.position.set(0, 1.2, -bodyLength / 2 + 0.3);
+        detailCurrentCar.add(spoiler);
+        
+        const spoilerSupport1 = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+        const support1 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
+        support1.position.set(-0.6, 1.05, -bodyLength / 2 + 0.3);
+        detailCurrentCar.add(support1);
+        
+        const support2 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
+        support2.position.set(0.6, 1.05, -bodyLength / 2 + 0.3);
+        detailCurrentCar.add(support2);
+    }
+    
+    if (config.hasStripes) {
+        const stripeGeometry = new THREE.BoxGeometry(0.3, 0.01, bodyLength * 0.9);
+        const stripe = new THREE.Mesh(stripeGeometry, accentMaterial);
+        stripe.position.set(0, bodyHeight + 0.51, 0);
+        detailCurrentCar.add(stripe);
+    }
+    
+    if (config.hasTrim) {
+        const trimGeometry = new THREE.BoxGeometry(bodyWidth + 0.05, 0.1, bodyLength);
+        const trim = new THREE.Mesh(trimGeometry, rimMaterial);
+        trim.position.set(0, 0.2, 0);
+        detailCurrentCar.add(trim);
+    }
+    
+    if (config.hasSideAccent) {
+        const sideAccentGeometry = new THREE.BoxGeometry(0.05, 0.2, bodyLength * 0.7);
+        const sideAccent1 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent1.position.set(bodyWidth / 2 + 0.05, 0.6, 0);
+        detailCurrentCar.add(sideAccent1);
+        
+        const sideAccent2 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent2.position.set(-bodyWidth / 2 - 0.05, 0.6, 0);
+        detailCurrentCar.add(sideAccent2);
+    }
+    
+    if (config.hasUnderglow) {
+        const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.2, 0.05, bodyLength - 0.5);
+        const underglowMaterial = new THREE.MeshStandardMaterial({
+            color: config.accentColor,
+            emissive: config.accentColor,
+            emissiveIntensity: 1,
+            transparent: true,
+            opacity: 0.8
+        });
+        const underglow = new THREE.Mesh(underglowGeometry, underglowMaterial);
+        underglow.position.set(0, -0.3, 0);
+        detailCurrentCar.add(underglow);
+    }
+    
+    if (config.hasChrome) {
+        const chromeGeometry = new THREE.BoxGeometry(bodyWidth, 0.15, bodyLength * 0.3);
+        const chromeMaterial = new THREE.MeshStandardMaterial({
+            color: config.accentColor,
+            metalness: 1,
+            roughness: 0.1
+        });
+        const chrome = new THREE.Mesh(chromeGeometry, chromeMaterial);
+        chrome.position.set(0, 0.3, bodyLength * 0.35);
+        detailCurrentCar.add(chrome);
+    }
+    
+    detailCurrentCar.position.y = 0;
+    detailScene.add(detailCurrentCar);
+}
+
+// Animation loop
+function animateDetail() {
+    detailAnimationId = requestAnimationFrame(animateDetail);
+    
+    if (detailCurrentCar) {
+        detailCurrentCar.rotation.y += (detailTargetRotationY - detailCurrentCar.rotation.y) * 0.1;
+        detailCurrentCar.rotation.x += (detailTargetRotationX - detailCurrentCar.rotation.x) * 0.1;
+        
+        if (!detailIsDragging) {
+            detailCurrentCar.rotation.y += 0.002;
+            detailCurrentCar.position.y = Math.sin(Date.now() * 0.001) * 0.05;
+        }
+    }
+    
+    detailRenderer.render(detailScene, detailCamera);
+}
+
+// Mouse Controls
+function onDetailMouseDown(event) {
+    detailIsDragging = true;
+    detailPreviousMouseX = event.clientX;
+    detailPreviousMouseY = event.clientY;
+}
+
+function onDetailMouseMove(event) {
+    if (detailIsDragging && detailCurrentCar) {
+        const deltaX = event.clientX - detailPreviousMouseX;
+        const deltaY = event.clientY - detailPreviousMouseY;
+        
+        detailTargetRotationY += deltaX * 0.01;
+        detailTargetRotationX += deltaY * 0.01;
+        detailTargetRotationX = Math.max(-Math.PI / 6, Math.min(Math.PI / 6, detailTargetRotationX));
+        
+        detailPreviousMouseX = event.clientX;
+        detailPreviousMouseY = event.clientY;
+    }
+}
+
+function onDetailMouseUp() {
+    detailIsDragging = false;
+}
+
+// Touch Controls
+function onDetailTouchStart(event) {
+    event.preventDefault();
+    if (event.touches.length === 1) {
+        detailPreviousMouseX = event.touches[0].clientX;
+        detailPreviousMouseY = event.touches[0].clientY;
+        detailIsDragging = true;
+    }
+}
+
+function onDetailTouchMove(event) {
+    event.preventDefault();
+    if (detailIsDragging && event.touches.length === 1 && detailCurrentCar) {
+        const deltaX = event.touches[0].clientX - detailPreviousMouseX;
+        const deltaY = event.touches[0].clientY - detailPreviousMouseY;
+        
+        detailTargetRotationY += deltaX * 0.01;
+        detailTargetRotationX += deltaY * 0.01;
+        detailTargetRotationX = Math.max(-Math.PI / 6, Math.min(Math.PI / 6, detailTargetRotationX));
+        
+        detailPreviousMouseX = event.touches[0].clientX;
+        detailPreviousMouseY = event.touches[0].clientY;
+    }
+}
+
+function onDetailTouchEnd() {
+    detailIsDragging = false;
+}
+
+// Zoom Control
+function onDetailWheel(event) {
+    event.preventDefault();
+    const delta = event.deltaY * 0.01;
+    detailCamera.position.z += delta;
+    detailCamera.position.z = Math.max(8, Math.min(20, detailCamera.position.z));
+}
+
+// Set Camera View
+function setDetailView(view) {
+    const distance = 12;
+    const height = 4;
+    
+    let newPosition;
+    switch(view) {
+        case 'front':
+            newPosition = { x: 0, y: height, z: distance };
+            break;
+        case 'side':
+            newPosition = { x: distance, y: height, z: 0 };
+            break;
+        case 'rear':
+            newPosition = { x: 0, y: height, z: -distance };
+            break;
+        case 'top':
+            newPosition = { x: 0, y: distance + 5, z: 5 };
+            break;
+        default:
+            newPosition = { x: 8, y: height, z: 12 };
+    }
+    
+    animateDetailCamera(newPosition);
+}
+
+function animateDetailCamera(targetPosition) {
+    const startPosition = {
+        x: detailCamera.position.x,
+        y: detailCamera.position.y,
+        z: detailCamera.position.z
+    };
+    
+    let progress = 0;
+    const duration = 1000;
+    const startTime = Date.now();
+    
+    function update() {
+        const elapsed = Date.now() - startTime;
+        progress = Math.min(elapsed / duration, 1);
+        
+        const eased = 1 - Math.pow(1 - progress, 3);
+        
+        detailCamera.position.x = startPosition.x + (targetPosition.x - startPosition.x) * eased;
+        detailCamera.position.y = startPosition.y + (targetPosition.y - startPosition.y) * eased;
+        detailCamera.position.z = startPosition.z + (targetPosition.z - startPosition.z) * eased;
+        detailCamera.lookAt(0, 0, 0);
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        }
+    }
+    
+    update();
 }
 
 // Close modal when clicking outside
