@@ -604,8 +604,8 @@ function create3DCar(category) {
         emissiveIntensity: category === 'electric' ? 0.2 : 0
     });
     
-    // Car body dimensions
-    const bodyWidth = 1.8;
+    // Car body dimensions - Use config values
+    const bodyWidth = category === 'sports' ? 2.0 : (category === 'suv' ? 2.0 : (category === 'electric' ? 1.9 : 1.8));
     const bodyHeight = config.bodyHeight;
     const bodyLength = config.bodyLength;
     
@@ -616,14 +616,40 @@ function create3DCar(category) {
     body.castShadow = true;
     detailCurrentCar.add(body);
     
-    // Cabin/Roof
-    const cabinWidth = bodyWidth - 0.2;
-    const cabinHeight = category === 'sports' ? 0.6 : (category === 'suv' ? 1.2 : 0.9);
-    const cabinLength = bodyLength * 0.6;
+    // Cabin/Roof - Very distinctive per type
+    let cabinWidth, cabinHeight, cabinLength, cabinZOffset;
+    
+    if (category === 'sports') {
+        cabinWidth = bodyWidth - 0.4;
+        cabinHeight = 0.5;
+        cabinLength = bodyLength * 0.5;
+        cabinZOffset = -0.5;
+    } else if (category === 'suv') {
+        cabinWidth = bodyWidth - 0.2;
+        cabinHeight = 1.3;
+        cabinLength = bodyLength * 0.65;
+        cabinZOffset = 0.2;
+    } else if (category === 'sedan') {
+        cabinWidth = bodyWidth - 0.3;
+        cabinHeight = 0.9;
+        cabinLength = bodyLength * 0.58;
+        cabinZOffset = -0.1;
+    } else if (category === 'electric') {
+        cabinWidth = bodyWidth - 0.25;
+        cabinHeight = 0.7;
+        cabinLength = bodyLength * 0.62;
+        cabinZOffset = 0;
+    } else {
+        cabinWidth = bodyWidth - 0.2;
+        cabinHeight = 0.9;
+        cabinLength = bodyLength * 0.6;
+        cabinZOffset = 0;
+    }
+    
     const cabinGeometry = new THREE.BoxGeometry(cabinWidth, cabinHeight, cabinLength);
     const cabin = new THREE.Mesh(cabinGeometry, bodyMaterial);
     cabin.position.y = bodyHeight / 2 + cabinHeight / 2 + 0.5;
-    cabin.position.z = category === 'sports' ? -0.3 : 0;
+    cabin.position.z = cabinZOffset;
     cabin.castShadow = true;
     detailCurrentCar.add(cabin);
     
@@ -649,9 +675,25 @@ function create3DCar(category) {
     trunk.castShadow = true;
     detailCurrentCar.add(trunk);
     
-    // Wheels
-    const wheelRadius = category === 'suv' ? 0.45 : 0.4;
-    const wheelWidth = 0.3;
+    // Wheels - Different sizes per type
+    let wheelRadius, wheelWidth;
+    
+    if (category === 'sports') {
+        wheelRadius = 0.42;
+        wheelWidth = 0.35;
+    } else if (category === 'suv') {
+        wheelRadius = 0.5;
+        wheelWidth = 0.35;
+    } else if (category === 'sedan') {
+        wheelRadius = 0.38;
+        wheelWidth = 0.28;
+    } else if (category === 'electric') {
+        wheelRadius = 0.4;
+        wheelWidth = 0.25;
+    } else {
+        wheelRadius = 0.4;
+        wheelWidth = 0.3;
+    }
     const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 32);
     const rimGeometry = new THREE.CylinderGeometry(wheelRadius * 0.6, wheelRadius * 0.6, wheelWidth + 0.05, 6);
     
@@ -706,72 +748,142 @@ function create3DCar(category) {
     taillightRight.position.set(bodyWidth / 2 - 0.2, 0.6, -bodyLength / 2 - 0.1);
     detailCurrentCar.add(taillightRight);
     
-    // Category-specific features
-    if (config.hasSpoiler) {
-        const spoilerGeometry = new THREE.BoxGeometry(bodyWidth - 0.4, 0.1, 0.6);
+    // Sports Car Features - AGGRESSIVE
+    if (category === 'sports') {
+        // Large rear spoiler
+        const spoilerGeometry = new THREE.BoxGeometry(bodyWidth - 0.2, 0.15, 0.8);
         const spoiler = new THREE.Mesh(spoilerGeometry, accentMaterial);
-        spoiler.position.set(0, 1.2, -bodyLength / 2 + 0.3);
+        spoiler.position.set(0, 1.0, -bodyLength / 2 + 0.4);
         detailCurrentCar.add(spoiler);
         
-        const spoilerSupport1 = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+        const spoilerSupport1 = new THREE.BoxGeometry(0.12, 0.4, 0.12);
         const support1 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
-        support1.position.set(-0.6, 1.05, -bodyLength / 2 + 0.3);
+        support1.position.set(-0.7, 0.8, -bodyLength / 2 + 0.4);
         detailCurrentCar.add(support1);
         
         const support2 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
-        support2.position.set(0.6, 1.05, -bodyLength / 2 + 0.3);
+        support2.position.set(0.7, 0.8, -bodyLength / 2 + 0.4);
         detailCurrentCar.add(support2);
-    }
-    
-    if (config.hasStripes) {
-        const stripeGeometry = new THREE.BoxGeometry(0.3, 0.01, bodyLength * 0.9);
+        
+        // Racing stripes
+        const stripeGeometry = new THREE.BoxGeometry(0.4, 0.02, bodyLength * 0.9);
         const stripe = new THREE.Mesh(stripeGeometry, accentMaterial);
         stripe.position.set(0, bodyHeight + 0.51, 0);
         detailCurrentCar.add(stripe);
+        
+        // Front air intakes
+        const intakeGeometry = new THREE.BoxGeometry(0.6, 0.25, 0.1);
+        const intakeLeft = new THREE.Mesh(intakeGeometry, new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        intakeLeft.position.set(-0.5, 0.4, bodyLength / 2 + 0.05);
+        detailCurrentCar.add(intakeLeft);
+        
+        const intakeRight = new THREE.Mesh(intakeGeometry, new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        intakeRight.position.set(0.5, 0.4, bodyLength / 2 + 0.05);
+        detailCurrentCar.add(intakeRight);
     }
     
-    if (config.hasTrim) {
-        const trimGeometry = new THREE.BoxGeometry(bodyWidth + 0.05, 0.1, bodyLength);
+    // SUV Features - RUGGED
+    if (category === 'suv') {
+        // Chrome trim
+        const trimGeometry = new THREE.BoxGeometry(bodyWidth + 0.08, 0.12, bodyLength);
         const trim = new THREE.Mesh(trimGeometry, rimMaterial);
-        trim.position.set(0, 0.2, 0);
+        trim.position.set(0, 0.25, 0);
         detailCurrentCar.add(trim);
+        
+        // Roof rack
+        const rackGeometry = new THREE.BoxGeometry(bodyWidth - 0.4, 0.08, bodyLength * 0.6);
+        const rack = new THREE.Mesh(rackGeometry, new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            metalness: 0.8,
+            roughness: 0.3
+        }));
+        rack.position.set(0, bodyHeight / 2 + cabinHeight + 0.54, 0);
+        detailCurrentCar.add(rack);
+        
+        // Side steps
+        const stepGeometry = new THREE.BoxGeometry(0.15, 0.05, bodyLength * 0.7);
+        const stepLeft = new THREE.Mesh(stepGeometry, rimMaterial);
+        stepLeft.position.set(bodyWidth / 2 + 0.1, -0.15, 0);
+        detailCurrentCar.add(stepLeft);
+        
+        const stepRight = new THREE.Mesh(stepGeometry, rimMaterial);
+        stepRight.position.set(-bodyWidth / 2 - 0.1, -0.15, 0);
+        detailCurrentCar.add(stepRight);
     }
     
-    if (config.hasSideAccent) {
-        const sideAccentGeometry = new THREE.BoxGeometry(0.05, 0.2, bodyLength * 0.7);
+    // Sedan Features - ELEGANT
+    if (category === 'sedan') {
+        // Chrome side accent lines
+        const sideAccentGeometry = new THREE.BoxGeometry(0.06, 0.15, bodyLength * 0.75);
         const sideAccent1 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
-        sideAccent1.position.set(bodyWidth / 2 + 0.05, 0.6, 0);
+        sideAccent1.position.set(bodyWidth / 2 + 0.05, 0.65, 0);
         detailCurrentCar.add(sideAccent1);
         
         const sideAccent2 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
-        sideAccent2.position.set(-bodyWidth / 2 - 0.05, 0.6, 0);
+        sideAccent2.position.set(-bodyWidth / 2 - 0.05, 0.65, 0);
         detailCurrentCar.add(sideAccent2);
+        
+        // Chrome grille
+        const grilleGeometry = new THREE.BoxGeometry(bodyWidth * 0.7, 0.3, 0.08);
+        const grille = new THREE.Mesh(grilleGeometry, accentMaterial);
+        grille.position.set(0, 0.5, bodyLength / 2 + 0.04);
+        detailCurrentCar.add(grille);
     }
     
-    if (config.hasUnderglow) {
-        const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.2, 0.05, bodyLength - 0.5);
+    // Electric Car Features - FUTURISTIC
+    if (category === 'electric') {
+        // Bright underglow
+        const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.15, 0.08, bodyLength - 0.4);
         const underglowMaterial = new THREE.MeshStandardMaterial({
             color: config.accentColor,
             emissive: config.accentColor,
-            emissiveIntensity: 1,
+            emissiveIntensity: 1.5,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.9
         });
         const underglow = new THREE.Mesh(underglowGeometry, underglowMaterial);
-        underglow.position.set(0, -0.3, 0);
+        underglow.position.set(0, -0.25, 0);
         detailCurrentCar.add(underglow);
+        
+        // Futuristic front diffuser
+        const diffuserGeometry = new THREE.BoxGeometry(bodyWidth * 0.8, 0.15, 0.25);
+        const diffuser = new THREE.Mesh(diffuserGeometry, accentMaterial);
+        diffuser.position.set(0, 0.2, bodyLength / 2 + 0.1);
+        detailCurrentCar.add(diffuser);
+        
+        // Aerodynamic side blades
+        const bladeGeometry = new THREE.BoxGeometry(0.08, 0.3, 1.0);
+        const bladeLeft = new THREE.Mesh(bladeGeometry, accentMaterial);
+        bladeLeft.position.set(bodyWidth / 2 + 0.04, 0.5, bodyLength * 0.15);
+        detailCurrentCar.add(bladeLeft);
+        
+        const bladeRight = new THREE.Mesh(bladeGeometry, accentMaterial);
+        bladeRight.position.set(-bodyWidth / 2 - 0.04, 0.5, bodyLength * 0.15);
+        detailCurrentCar.add(bladeRight);
     }
     
-    if (config.hasChrome) {
-        const chromeGeometry = new THREE.BoxGeometry(bodyWidth, 0.15, bodyLength * 0.3);
-        const chromeMaterial = new THREE.MeshStandardMaterial({
+    // Luxury Car Features - PREMIUM
+    if (category === 'luxury') {
+        // Chrome grille
+        const grilleGeometry = new THREE.BoxGeometry(bodyWidth * 0.8, 0.4, 0.1);
+        const grilleMaterial = new THREE.MeshStandardMaterial({
             color: config.accentColor,
             metalness: 1,
             roughness: 0.1
         });
-        const chrome = new THREE.Mesh(chromeGeometry, chromeMaterial);
-        chrome.position.set(0, 0.3, bodyLength * 0.35);
-        detailCurrentCar.add(chrome);
+        const grille = new THREE.Mesh(grilleGeometry, grilleMaterial);
+        grille.position.set(0, 0.6, bodyLength / 2 + 0.05);
+        detailCurrentCar.add(grille);
+        
+        // Side chrome trim
+        const trimGeometry = new THREE.BoxGeometry(0.08, 0.15, bodyLength * 0.8);
+        const trimLeft = new THREE.Mesh(trimGeometry, grilleMaterial);
+        trimLeft.position.set(bodyWidth / 2 + 0.04, 0.7, 0);
+        detailCurrentCar.add(trimLeft);
+        
+        const trimRight = new THREE.Mesh(trimGeometry, grilleMaterial);
+        trimRight.position.set(-bodyWidth / 2 - 0.04, 0.7, 0);
+        detailCurrentCar.add(trimRight);
     }
     
     detailCurrentCar.position.y = 0;
