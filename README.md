@@ -1,9 +1,9 @@
-# 🚗 Luxe Motors - Premium 3D Car Showroom
+# 🚗 Luxe Motors - Premium Car Showroom
 
-A stunning, fully interactive 3D car showroom website inspired by Tesla's modern design aesthetic. Built with Three.js for immersive 360° vehicle exploration.
+A stunning, fully interactive car showroom website inspired by Tesla's modern design aesthetic. Browse premium vehicles with beautiful images and detailed specifications.
 
 ![Luxe Motors](https://img.shields.io/badge/Status-Live-success)
-![Three.js](https://img.shields.io/badge/Three.js-r128-blue)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow)
 ![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-orange)
 
 ## ✨ Features
@@ -14,14 +14,13 @@ A stunning, fully interactive 3D car showroom website inspired by Tesla's modern
 - **Smooth Animations** - Fluid transitions throughout
 - **Responsive Design** - Perfect on desktop, tablet, and mobile
 
-### 🔮 Full 3D Experience
-- **Interactive 3D Models** - Built entirely with Three.js
-- **Image-to-3D Enhancement** - 🆕 Colors and textures extracted from car images
-- **360° Rotation** - Drag to rotate, scroll to zoom
-- **Multiple View Angles** - Front, side, rear, and top views
-- **Real-Time Rendering** - Smooth 60 FPS performance
-- **Dynamic Lighting** - Professional studio-like illumination
-- **Smart Materials** - Auto-adjusting metalness and roughness based on color analysis
+### 🖼️ Beautiful Vehicle Display
+- **High-Quality Images** - Crisp, professional vehicle photography
+- **Interactive Gallery** - Browse and filter by category
+- **Detailed Views** - Full-screen image viewer for each vehicle
+- **Fast Loading** - Optimized images for quick performance
+- **Responsive Design** - Perfect on all devices
+- **Smooth Transitions** - Professional animations and effects
 
 ### 🏎️ Vehicle Collection
 - **Sports Coupe** - High-performance sports car
@@ -165,31 +164,17 @@ The website is fully responsive with:
 - Optimized 3D performance
 - Readable text on small screens
 
-## 🎨 Image-to-3D Enhancement (NEW!)
-
-The project now includes intelligent image analysis that automatically:
-- ✅ Extracts dominant colors from car images
-- ✅ Applies realistic textures to 3D models
-- ✅ Adjusts material properties (metalness, roughness) based on color
-- ✅ Creates unique models for each car automatically
-- ✅ Works in real-time with no backend required
-
-**See `IMAGE-TO-3D-GUIDE.md` for detailed documentation.**
-**See `IMPLEMENTATION-SUMMARY.md` for implementation details.**
-
 ## 🌟 Future Enhancements
 
 Potential features for future versions:
-- [x] ~~Image-based color extraction~~ **IMPLEMENTED!**
-- [x] ~~Real car model support (GLB/GLTF)~~ **IMPLEMENTED!**
-- [ ] Multiple color options per car
-- [ ] Interior 3D views
-- [ ] AR (Augmented Reality) mode
+- [ ] Multiple images per car (gallery slider)
+- [ ] Interior views
+- [ ] 360° photo views
 - [ ] Comparison tool
 - [ ] Save favorites
-- [ ] Virtual test drive
-- [ ] Configurator tool
-- [ ] AI-generated 3D models from photos
+- [ ] Virtual showroom tour
+- [ ] Color configurator
+- [ ] Advanced filtering options
 
 ## 📄 License
 
@@ -201,8 +186,8 @@ Feel free to fork this project and customize it for your needs!
 
 ## 💡 Credits
 
-- **Three.js** - 3D graphics library
 - **Inter Font** - Google Fonts
+- **Unsplash** - Vehicle photography
 - **Design Inspiration** - Tesla.com
 
 ## 📞 Support
@@ -211,7 +196,7 @@ For questions or issues, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ using Three.js and modern web technologies**
+**Built with ❤️ using modern web technologies**
 
 🌐 **Ready for GitHub Pages deployment!**
 

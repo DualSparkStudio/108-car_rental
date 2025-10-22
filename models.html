@@ -63,7 +63,7 @@
         </div>
     </div>
 
-    <!-- Car Detail Section with 3D Viewer -->
+    <!-- Car Detail Section -->
     <section id="carDetailSection" class="car-detail-section" style="display: none;">
         <div class="detail-container">
             <button class="close-detail-btn" onclick="closeDetailView()">
@@ -79,25 +79,9 @@
                     </div>
                 </div>
                 
-                <!-- 3D Viewer -->
+                <!-- Car Image -->
                 <div class="detail-viewer-container">
-                    <canvas id="detailCanvas3d"></canvas>
-                    <div class="detail-viewer-controls">
-                        <div class="control-hint">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                                <path d="M2 17l10 5 10-5"/>
-                                <path d="M2 12l10 5 10-5"/>
-                            </svg>
-                            <span>Drag to rotate • Scroll to zoom</span>
-                        </div>
-                    </div>
-                    <div class="view-buttons">
-                        <button class="view-btn" onclick="setDetailView('front')">Front</button>
-                        <button class="view-btn" onclick="setDetailView('side')">Side</button>
-                        <button class="view-btn" onclick="setDetailView('rear')">Rear</button>
-                        <button class="view-btn" onclick="setDetailView('top')">Top</button>
-                    </div>
+                    <img id="detailCarImage" src="" alt="Car" class="detail-car-image">
                 </div>
                 
                 <!-- Specifications -->
@@ -126,10 +110,6 @@
         <p>&copy; 2025 Luxe Motors. Premium Car Collection.</p>
     </footer>
 
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Image-to-3D Enhancement -->
-    <script src="imageToModel.js"></script>
     <script src="models.js"></script>
 </body>
 </html>

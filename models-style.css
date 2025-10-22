@@ -478,26 +478,21 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-#detailCanvas3d {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-.detail-viewer-controls {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-    padding: 1rem 2rem;
-    border-radius: 50px;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: center;
+}
+
+.detail-car-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.detail-car-image:hover {
+    transform: scale(1.05);
 }
 
 /* Specifications in Detail View */
