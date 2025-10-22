@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Luxe Motors</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin-style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">LUXE MOTORS - ADMIN</div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="models.html">Models</a>
+                <a href="#" id="logoutBtn" style="display: none;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Login Section -->
+    <section id="loginSection" class="admin-section">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>Admin Login</h1>
+                <p class="login-subtitle">Enter credentials to access admin panel</p>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Enter password" required>
+                    </div>
+                    <div id="loginError" class="error-message"></div>
+                    <button type="submit" class="login-btn">Login</button>
+                    <p class="login-hint">Default: admin / admin123</p>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Admin Panel Section -->
+    <section id="adminPanel" class="admin-section" style="display: none;">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1>Car Models Management</h1>
+                <button class="add-model-btn" onclick="openAddModelForm()">+ Add New Model</button>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🚗</div>
+                    <div class="stat-info">
+                        <h3 id="totalModels">0</h3>
+                        <p>Total Models</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-info">
+                        <h3 id="customModels">0</h3>
+                        <p>Custom Models</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏷️</div>
+                    <div class="stat-info">
+                        <h3 id="categories">5</h3>
+                        <p>Categories</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Models Table -->
+            <div class="models-table-container">
+                <h2>All Models</h2>
+                <div class="table-controls">
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="all">All Categories</option>
+                        <option value="sports">Sports</option>
+                        <option value="suv">SUV</option>
+                        <option value="sedan">Sedan</option>
+                        <option value="electric">Electric</option>
+                        <option value="luxury">Luxury</option>
+                    </select>
+                </div>
+                <table class="models-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Rent/Day</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelsTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add/Edit Model Modal -->
+    <div id="modelFormModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Model</h2>
+                <span class="modal-close" onclick="closeModelForm()">&times;</span>
+            </div>
+            <form id="modelForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="modelName">Model Name *</label>
+                        <input type="text" id="modelName" placeholder="e.g., Phantom RS" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modelCategory">Category *</label>
+                        <select id="modelCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="sports">Sports</option>
+                            <option value="suv">SUV</option>
+                            <option value="sedan">Sedan</option>
+                            <option value="electric">Electric</option>
+                            <option value="luxury">Luxury</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modelPrice">Purchase Price ($) *</label>
+                        <input type="number" id="modelPrice" placeholder="75000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modelRentPrice">Rental Price ($/day) *</label>
+                        <input type="number" id="modelRentPrice" placeholder="250" required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="modelImage">Image URL *</label>
+                        <input type="url" id="modelImage" placeholder="https://images.unsplash.com/..." required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="modelDescription">Description *</label>
+                        <textarea id="modelDescription" rows="3" placeholder="Enter model description..." required></textarea>
+                    </div>
+                </div>
+
+                <h3>Specifications</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="specTopSpeed">Top Speed</label>
+                        <input type="text" id="specTopSpeed" placeholder="e.g., 195 mph">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specAcceleration">Acceleration (0-60)</label>
+                        <input type="text" id="specAcceleration" placeholder="e.g., 0-60 in 3.2s">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specEngine">Engine/Motor</label>
+                        <input type="text" id="specEngine" placeholder="e.g., 3.0L V6 Twin-Turbo">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specHorsepower">Horsepower</label>
+                        <input type="text" id="specHorsepower" placeholder="e.g., 450 hp">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specTransmission">Transmission</label>
+                        <input type="text" id="specTransmission" placeholder="e.g., 8-Speed Automatic">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specDrivetrain">Drivetrain</label>
+                        <input type="text" id="specDrivetrain" placeholder="e.g., AWD">
+                    </div>
+                </div>
+
+                <input type="hidden" id="modelId">
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModelForm()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Model</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
+

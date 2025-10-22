@@ -50,8 +50,8 @@ const carVisualConfig = {
     }
 };
 
-// Complete Car Database with 12 models
-const allCars = [
+// Default Car Database with 12 models
+const defaultCars = [
     {
         id: 1,
         name: 'Phantom RS',
@@ -258,8 +258,18 @@ const allCars = [
     }
 ];
 
+// Get all cars (default + custom from localStorage)
+function getAllCars() {
+    const customModels = JSON.parse(localStorage.getItem('customModels') || '[]');
+    return [...defaultCars, ...customModels];
+}
+
+// Make allCars available globally
+let allCars = getAllCars();
+
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
+    allCars = getAllCars(); // Refresh on load
     displayCars(allCars);
     setupFilters();
 });
