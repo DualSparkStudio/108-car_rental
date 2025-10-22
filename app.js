@@ -11,6 +11,7 @@ const carDatabase = {
         name: 'Sports Coupe',
         price: 75000,
         rentPrice: 250,
+        image: 'https://images.unsplash.com/photo-1614162692292-7ac56d7f71ed?w=800&q=80',
         specs: {
             'Top Speed': '195 mph',
             'Acceleration': '0-60 in 3.2s',
@@ -19,7 +20,7 @@ const carDatabase = {
             'Transmission': '8-Speed Automatic',
             'Drivetrain': 'AWD'
         },
-        color: 0xe82127, // Red
+        color: 0xe82127, // Red (fallback)
         accentColor: 0xff4444,
         style: 'aggressive'
     },
@@ -27,6 +28,7 @@ const carDatabase = {
         name: 'Luxury SUV',
         price: 95000,
         rentPrice: 320,
+        image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
         specs: {
             'Top Speed': '155 mph',
             'Acceleration': '0-60 in 4.5s',
@@ -35,7 +37,7 @@ const carDatabase = {
             'Transmission': '9-Speed Automatic',
             'Drivetrain': 'AWD'
         },
-        color: 0x0a0a0a, // Matte Black
+        color: 0x0a0a0a, // Matte Black (fallback)
         accentColor: 0x444444,
         style: 'luxury'
     },
@@ -43,6 +45,7 @@ const carDatabase = {
         name: 'Executive Sedan',
         price: 65000,
         rentPrice: 200,
+        image: 'https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=800&q=80',
         specs: {
             'Top Speed': '175 mph',
             'Acceleration': '0-60 in 4.0s',
@@ -51,7 +54,7 @@ const carDatabase = {
             'Transmission': '10-Speed Automatic',
             'Drivetrain': 'RWD'
         },
-        color: 0x1e3a5f, // Deep Blue
+        color: 0x1e3a5f, // Deep Blue (fallback)
         accentColor: 0x3498db,
         style: 'elegant'
     },
@@ -59,6 +62,7 @@ const carDatabase = {
         name: 'Electric GT',
         price: 125000,
         rentPrice: 400,
+        image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80',
         specs: {
             'Top Speed': '200 mph',
             'Acceleration': '0-60 in 2.1s',
@@ -67,7 +71,7 @@ const carDatabase = {
             'Motors': 'Tri-Motor AWD',
             'Horsepower': '1020 hp'
         },
-        color: 0xcccccc, // Silver/White
+        color: 0xcccccc, // Silver/White (fallback)
         accentColor: 0x00ff88, // Neon Green accents
         style: 'futuristic'
     }
@@ -179,8 +183,8 @@ function init() {
     animate();
 }
 
-// Create 3D Car Model
-function createCar(type) {
+// Create 3D Car Model (now async to support image enhancement)
+async function createCar(type) {
     // Remove existing car
     if (currentCar) {
         scene.remove(currentCar);
@@ -188,21 +192,48 @@ function createCar(type) {
     
     currentCar = new THREE.Group();
     const carData = carDatabase[type];
-    const carColor = carData.color;
     
-    // Materials
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-        color: carColor,
-        metalness: type === 'suv' ? 0.3 : 0.9, // Matte finish for SUV
-        roughness: type === 'suv' ? 0.8 : 0.1,
-        envMapIntensity: 1
-    });
+    // Try to enhance with image
+    let enhancedData = null;
+    if (carData.image && typeof enhanceCarWithImage === 'function') {
+        enhancedData = await enhanceCarWithImage(currentCar, carData.image, type);
+    }
     
+    // Use enhanced or fallback color
+    let carColor = carData.color;
+    let bodyMaterial;
+    
+    if (enhancedData && enhancedData.colors) {
+        // Use enhanced material with extracted colors
+        bodyMaterial = new THREE.MeshStandardMaterial({
+            color: enhancedData.colors.primary,
+            metalness: type === 'suv' ? 0.3 : (enhancedData.colors.isDark ? 0.9 : 0.7),
+            roughness: type === 'suv' ? 0.8 : (enhancedData.colors.luminance > 0.7 ? 0.2 : 0.1),
+            envMapIntensity: 1.2
+        });
+        
+        // Apply texture to material if available
+        if (enhancedData.texture) {
+            bodyMaterial.map = enhancedData.texture;
+            bodyMaterial.needsUpdate = true;
+        }
+    } else {
+        // Fallback to original
+        bodyMaterial = new THREE.MeshStandardMaterial({
+            color: carColor,
+            metalness: type === 'suv' ? 0.3 : 0.9,
+            roughness: type === 'suv' ? 0.8 : 0.1,
+            envMapIntensity: 1
+        });
+    }
+    
+    // Accent material with enhanced colors
+    const accentColor = (enhancedData && enhancedData.colors) ? enhancedData.colors.accent : carData.accentColor;
     const accentMaterial = new THREE.MeshStandardMaterial({
-        color: carData.accentColor,
+        color: accentColor,
         metalness: 0.9,
         roughness: 0.1,
-        emissive: type === 'electric' ? carData.accentColor : 0x000000,
+        emissive: type === 'electric' ? accentColor : 0x000000,
         emissiveIntensity: type === 'electric' ? 0.3 : 0
     });
     
@@ -221,11 +252,12 @@ function createCar(type) {
         roughness: 0.2
     });
     
+    const rimColor = type === 'electric' ? accentColor : (type === 'sports' ? (enhancedData && enhancedData.colors ? enhancedData.colors.primary : 0xff0000) : 0xcccccc);
     const rimMaterial = new THREE.MeshStandardMaterial({
-        color: type === 'electric' ? carData.accentColor : (type === 'sports' ? 0xff0000 : 0xcccccc),
+        color: rimColor,
         metalness: 1,
         roughness: 0.1,
-        emissive: type === 'electric' ? carData.accentColor : 0x000000,
+        emissive: type === 'electric' ? accentColor : 0x000000,
         emissiveIntensity: type === 'electric' ? 0.2 : 0
     });
     

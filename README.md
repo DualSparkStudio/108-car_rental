@@ -16,10 +16,12 @@ A stunning, fully interactive 3D car showroom website inspired by Tesla's modern
 
 ### 🔮 Full 3D Experience
 - **Interactive 3D Models** - Built entirely with Three.js
+- **Image-to-3D Enhancement** - 🆕 Colors and textures extracted from car images
 - **360° Rotation** - Drag to rotate, scroll to zoom
 - **Multiple View Angles** - Front, side, rear, and top views
 - **Real-Time Rendering** - Smooth 60 FPS performance
 - **Dynamic Lighting** - Professional studio-like illumination
+- **Smart Materials** - Auto-adjusting metalness and roughness based on color analysis
 
 ### 🏎️ Vehicle Collection
 - **Sports Coupe** - High-performance sports car
@@ -163,9 +165,23 @@ The website is fully responsive with:
 - Optimized 3D performance
 - Readable text on small screens
 
+## 🎨 Image-to-3D Enhancement (NEW!)
+
+The project now includes intelligent image analysis that automatically:
+- ✅ Extracts dominant colors from car images
+- ✅ Applies realistic textures to 3D models
+- ✅ Adjusts material properties (metalness, roughness) based on color
+- ✅ Creates unique models for each car automatically
+- ✅ Works in real-time with no backend required
+
+**See `IMAGE-TO-3D-GUIDE.md` for detailed documentation.**
+**See `IMPLEMENTATION-SUMMARY.md` for implementation details.**
+
 ## 🌟 Future Enhancements
 
 Potential features for future versions:
+- [x] ~~Image-based color extraction~~ **IMPLEMENTED!**
+- [x] ~~Real car model support (GLB/GLTF)~~ **IMPLEMENTED!**
 - [ ] Multiple color options per car
 - [ ] Interior 3D views
 - [ ] AR (Augmented Reality) mode
@@ -173,7 +189,7 @@ Potential features for future versions:
 - [ ] Save favorites
 - [ ] Virtual test drive
 - [ ] Configurator tool
-- [ ] Real car models (GLB/GLTF)
+- [ ] AI-generated 3D models from photos
 
 ## 📄 License
 

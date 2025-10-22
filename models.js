@@ -560,8 +560,8 @@ function init3DDetailViewer(car) {
     gridHelper.position.y = -0.99;
     detailScene.add(gridHelper);
     
-    // Create car
-    create3DCar(car.category);
+    // Create car with image enhancement
+    create3DCar(car);
     
     // Event Listeners
     canvas.addEventListener('mousedown', onDetailMouseDown);
@@ -576,29 +576,51 @@ function init3DDetailViewer(car) {
     animateDetail();
 }
 
-// Create 3D Car Model
-function create3DCar(category) {
+// Create 3D Car Model (now async to support image enhancement)
+async function create3DCar(car) {
     if (detailCurrentCar) {
         detailScene.remove(detailCurrentCar);
     }
     
     detailCurrentCar = new THREE.Group();
+    const category = car.category;
     const config = carVisualConfig[category];
-    const carColor = config.color;
     
-    // Materials
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-        color: carColor,
-        metalness: category === 'suv' ? 0.3 : 0.9,
-        roughness: category === 'suv' ? 0.8 : 0.1,
-        envMapIntensity: 1
-    });
+    // Try to enhance with image
+    let enhancedData = null;
+    if (car.image && typeof enhanceCarWithImage === 'function') {
+        enhancedData = await enhanceCarWithImage(detailCurrentCar, car.image, category);
+    }
     
+    // Materials with image enhancement
+    let bodyMaterial;
+    if (enhancedData && enhancedData.colors) {
+        bodyMaterial = new THREE.MeshStandardMaterial({
+            color: enhancedData.colors.primary,
+            metalness: category === 'suv' ? 0.3 : (enhancedData.colors.isDark ? 0.9 : 0.7),
+            roughness: category === 'suv' ? 0.8 : (enhancedData.colors.luminance > 0.7 ? 0.2 : 0.1),
+            envMapIntensity: 1.2
+        });
+        
+        if (enhancedData.texture) {
+            bodyMaterial.map = enhancedData.texture;
+            bodyMaterial.needsUpdate = true;
+        }
+    } else {
+        bodyMaterial = new THREE.MeshStandardMaterial({
+            color: config.color,
+            metalness: category === 'suv' ? 0.3 : 0.9,
+            roughness: category === 'suv' ? 0.8 : 0.1,
+            envMapIntensity: 1
+        });
+    }
+    
+    const accentColor = (enhancedData && enhancedData.colors) ? enhancedData.colors.accent : config.accentColor;
     const accentMaterial = new THREE.MeshStandardMaterial({
-        color: config.accentColor,
+        color: accentColor,
         metalness: 0.9,
         roughness: 0.1,
-        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissive: category === 'electric' ? accentColor : 0x000000,
         emissiveIntensity: category === 'electric' ? 0.3 : 0
     });
     
@@ -617,11 +639,12 @@ function create3DCar(category) {
         roughness: 0.2
     });
     
+    const rimColor = category === 'electric' ? accentColor : (category === 'sports' ? (enhancedData && enhancedData.colors ? enhancedData.colors.primary : 0xff0000) : 0xcccccc);
     const rimMaterial = new THREE.MeshStandardMaterial({
-        color: category === 'electric' ? config.accentColor : (category === 'sports' ? 0xff0000 : 0xcccccc),
+        color: rimColor,
         metalness: 1,
         roughness: 0.1,
-        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissive: category === 'electric' ? accentColor : 0x000000,
         emissiveIntensity: category === 'electric' ? 0.2 : 0
     });
     
@@ -856,8 +879,8 @@ function create3DCar(category) {
         // Bright underglow
         const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.15, 0.08, bodyLength - 0.4);
         const underglowMaterial = new THREE.MeshStandardMaterial({
-            color: config.accentColor,
-            emissive: config.accentColor,
+            color: accentColor,
+            emissive: accentColor,
             emissiveIntensity: 1.5,
             transparent: true,
             opacity: 0.9
@@ -888,7 +911,7 @@ function create3DCar(category) {
         // Chrome grille
         const grilleGeometry = new THREE.BoxGeometry(bodyWidth * 0.8, 0.4, 0.1);
         const grilleMaterial = new THREE.MeshStandardMaterial({
-            color: config.accentColor,
+            color: accentColor,
             metalness: 1,
             roughness: 0.1
         });
