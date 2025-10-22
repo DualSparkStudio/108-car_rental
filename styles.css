@@ -80,7 +80,7 @@ html {
     justify-content: center;
     align-items: center;
     text-align: center;
-    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(26, 26, 26, 0.8) 100%);
     position: relative;
     overflow: hidden;
 }
@@ -90,8 +90,9 @@ html {
     position: absolute;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(232, 33, 39, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(232, 33, 39, 0.15) 0%, transparent 70%);
     animation: pulse 15s ease-in-out infinite;
+    pointer-events: none;
 }
 
 @keyframes pulse {
@@ -99,11 +100,40 @@ html {
     50% { transform: scale(1.1) rotate(180deg); }
 }
 
+.hero::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=80') center/cover no-repeat;
+    animation: heroZoom 20s ease-in-out infinite alternate;
+    z-index: 0;
+}
+
+@keyframes heroZoom {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
+}
+
 .hero-content {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     max-width: 900px;
     padding: 2rem;
+    animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .hero-title {
@@ -144,6 +174,7 @@ html {
     bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 2;
 }
 
 .mouse {
