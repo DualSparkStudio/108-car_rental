@@ -329,6 +329,23 @@
     color: var(--primary-bg);
 }
 
+.btn-view {
+    padding: 0.6rem 1.2rem;
+    background: transparent;
+    color: #00ff88;
+    border: 1px solid #00ff88;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-view:hover {
+    background: #00ff88;
+    color: var(--primary-bg);
+}
+
 .text-muted {
     color: var(--text-secondary);
 }
@@ -448,6 +465,177 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* 3D Viewer Modal */
+.viewer-modal {
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    overflow-y: auto;
+}
+
+.viewer-modal-content {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.viewer-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.viewer-badge {
+    display: inline-block;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: #00ff88;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+}
+
+.viewer-modal-header h2 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.viewer-modal-header p {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+}
+
+.viewer-close-btn {
+    padding: 1rem 2rem;
+    background: transparent;
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.viewer-close-btn:hover {
+    border-color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* 3D Canvas Container */
+.viewer-canvas-container {
+    max-width: 1400px;
+    margin: 0 auto 3rem;
+    height: 600px;
+    background: var(--card-bg);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+#viewerCanvas3d {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.viewer-controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.view-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.view-btn {
+    padding: 0.7rem 1.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.view-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-primary);
+}
+
+/* Viewer Specifications */
+.viewer-specs-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.viewer-specs-container h3 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.viewer-specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.viewer-spec-item {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 15px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s;
+}
+
+.viewer-spec-item:hover {
+    transform: translateY(-5px);
+    border-color: var(--text-primary);
+}
+
+.viewer-spec-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.viewer-spec-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .admin-header {
@@ -519,6 +707,23 @@
     
     .action-buttons {
         flex-direction: column;
+    }
+    
+    .viewer-modal-header {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .viewer-modal-header h2 {
+        font-size: 2rem;
+    }
+    
+    .viewer-canvas-container {
+        height: 400px;
+    }
+    
+    .viewer-specs-grid {
+        grid-template-columns: 1fr;
     }
 }
 

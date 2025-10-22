@@ -4,6 +4,52 @@ const ADMIN_CREDENTIALS = {
     password: 'admin123'
 };
 
+// Three.js variables for 3D viewer
+let viewerScene, viewerCamera, viewerRenderer, viewerCurrentCar;
+let viewerIsDragging = false;
+let viewerPreviousMouseX = 0, viewerPreviousMouseY = 0;
+let viewerTargetRotationX = 0, viewerTargetRotationY = 0;
+let viewerAnimationId = null;
+
+// Car visual configurations
+const carVisualConfig = {
+    sports: { 
+        color: 0xe82127, 
+        accentColor: 0xff4444, 
+        bodyHeight: 0.7,
+        bodyLength: 3.8,
+        bodyWidth: 2.0
+    },
+    suv: { 
+        color: 0x0a0a0a, 
+        accentColor: 0x444444, 
+        bodyHeight: 1.8,
+        bodyLength: 5.0,
+        bodyWidth: 2.0
+    },
+    sedan: { 
+        color: 0x1e3a5f, 
+        accentColor: 0x3498db, 
+        bodyHeight: 1.2,
+        bodyLength: 4.2,
+        bodyWidth: 1.8
+    },
+    electric: { 
+        color: 0xcccccc, 
+        accentColor: 0x00ff88, 
+        bodyHeight: 1.0,
+        bodyLength: 4.3,
+        bodyWidth: 1.9
+    },
+    luxury: { 
+        color: 0x1a1a2e, 
+        accentColor: 0xc7a26a, 
+        bodyHeight: 1.3,
+        bodyLength: 4.8,
+        bodyWidth: 1.8
+    }
+};
+
 // Default car models
 const defaultModels = [
     {
@@ -348,6 +394,11 @@ function loadModels(filter = 'all') {
         // Add action buttons for all models
         const actionsCell = row.querySelector('.action-buttons');
         
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'btn-view';
+        viewBtn.textContent = 'View';
+        viewBtn.onclick = () => viewModel(model.id);
+        
         const editBtn = document.createElement('button');
         editBtn.className = 'btn-edit';
         editBtn.textContent = 'Edit';
@@ -358,6 +409,7 @@ function loadModels(filter = 'all') {
         deleteBtn.textContent = 'Delete';
         deleteBtn.onclick = () => deleteModel(model.id);
         
+        actionsCell.appendChild(viewBtn);
         actionsCell.appendChild(editBtn);
         actionsCell.appendChild(deleteBtn);
         
@@ -523,6 +575,638 @@ function handleModelSubmit(e) {
     updateStatistics();
     
     alert(currentEditId ? 'Model updated successfully!' : 'Model added successfully!');
+}
+
+// View model in 3D
+function viewModel(id) {
+    const allModels = getAllModels();
+    const model = allModels.find(m => m.id === id);
+    
+    if (!model) {
+        alert('Model not found');
+        return;
+    }
+    
+    // Update viewer information
+    document.getElementById('viewerBadge').textContent = model.category.toUpperCase();
+    document.getElementById('viewerTitle').textContent = model.name;
+    document.getElementById('viewerDescription').textContent = model.description;
+    
+    // Update specifications
+    const specsGrid = document.getElementById('viewerSpecsGrid');
+    specsGrid.innerHTML = '';
+    Object.entries(model.specs).forEach(([label, value]) => {
+        if (value) {
+            const specItem = document.createElement('div');
+            specItem.className = 'viewer-spec-item';
+            specItem.innerHTML = `
+                <div class="viewer-spec-label">${label.charAt(0).toUpperCase() + label.slice(1).replace(/([A-Z])/g, ' $1')}</div>
+                <div class="viewer-spec-value">${value}</div>
+            `;
+            specsGrid.appendChild(specItem);
+        }
+    });
+    
+    // Show viewer section
+    document.getElementById('viewerSection').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize 3D viewer
+    setTimeout(() => {
+        init3DViewer(model);
+    }, 100);
+}
+
+// Close viewer
+function closeViewer() {
+    // Stop animation loop
+    if (viewerAnimationId) {
+        cancelAnimationFrame(viewerAnimationId);
+        viewerAnimationId = null;
+    }
+    
+    // Clean up Three.js
+    if (viewerRenderer) {
+        viewerRenderer.dispose();
+        viewerRenderer = null;
+    }
+    if (viewerScene) {
+        viewerScene = null;
+    }
+    
+    // Reset rotation values
+    viewerTargetRotationX = 0;
+    viewerTargetRotationY = 0;
+    
+    // Hide viewer section
+    document.getElementById('viewerSection').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Initialize 3D Viewer
+function init3DViewer(model) {
+    const canvas = document.getElementById('viewerCanvas3d');
+    if (!canvas) return;
+    
+    // Clean up existing scene
+    if (viewerRenderer) {
+        viewerRenderer.dispose();
+    }
+    if (viewerAnimationId) {
+        cancelAnimationFrame(viewerAnimationId);
+    }
+    
+    // Scene
+    viewerScene = new THREE.Scene();
+    viewerScene.background = new THREE.Color(0x0a0a0a);
+    viewerScene.fog = new THREE.Fog(0x0a0a0a, 10, 50);
+    
+    // Camera
+    viewerCamera = new THREE.PerspectiveCamera(
+        45,
+        canvas.parentElement.clientWidth / canvas.parentElement.clientHeight,
+        0.1,
+        1000
+    );
+    viewerCamera.position.set(8, 4, 12);
+    viewerCamera.lookAt(0, 0, 0);
+    
+    // Renderer
+    viewerRenderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+        alpha: true
+    });
+    viewerRenderer.setSize(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight);
+    viewerRenderer.setPixelRatio(window.devicePixelRatio);
+    viewerRenderer.shadowMap.enabled = true;
+    viewerRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    viewerScene.add(ambientLight);
+    
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(5, 10, 5);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    viewerScene.add(directionalLight1);
+    
+    const directionalLight2 = new THREE.DirectionalLight(0x4488ff, 0.3);
+    directionalLight2.position.set(-5, 5, -5);
+    viewerScene.add(directionalLight2);
+    
+    const rimLight = new THREE.DirectionalLight(0xff4444, 0.4);
+    rimLight.position.set(0, 2, -10);
+    viewerScene.add(rimLight);
+    
+    const spotLight = new THREE.SpotLight(0xffffff, 1);
+    spotLight.position.set(0, 15, 0);
+    spotLight.angle = Math.PI / 6;
+    spotLight.penumbra = 0.3;
+    spotLight.castShadow = true;
+    viewerScene.add(spotLight);
+    
+    // Ground
+    const groundGeometry = new THREE.CircleGeometry(20, 64);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    ground.receiveShadow = true;
+    viewerScene.add(ground);
+    
+    // Grid
+    const gridHelper = new THREE.GridHelper(20, 20, 0x333333, 0x1a1a1a);
+    gridHelper.position.y = -0.99;
+    viewerScene.add(gridHelper);
+    
+    // Create car
+    create3DViewerCar(model.category);
+    
+    // Event Listeners
+    canvas.addEventListener('mousedown', onViewerMouseDown);
+    canvas.addEventListener('mousemove', onViewerMouseMove);
+    canvas.addEventListener('mouseup', onViewerMouseUp);
+    canvas.addEventListener('wheel', onViewerWheel);
+    canvas.addEventListener('touchstart', onViewerTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onViewerTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onViewerTouchEnd);
+    
+    // Start animation
+    animateViewer();
+}
+
+// Create 3D Car Model for Viewer
+function create3DViewerCar(category) {
+    if (viewerCurrentCar) {
+        viewerScene.remove(viewerCurrentCar);
+    }
+    
+    viewerCurrentCar = new THREE.Group();
+    const config = carVisualConfig[category] || carVisualConfig.sedan;
+    const carColor = config.color;
+    
+    // Materials
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: carColor,
+        metalness: category === 'suv' ? 0.3 : 0.9,
+        roughness: category === 'suv' ? 0.8 : 0.1,
+        envMapIntensity: 1
+    });
+    
+    const accentMaterial = new THREE.MeshStandardMaterial({
+        color: config.accentColor,
+        metalness: 0.9,
+        roughness: 0.1,
+        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissiveIntensity: category === 'electric' ? 0.3 : 0
+    });
+    
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+        color: category === 'electric' ? 0x88ffcc : 0x88ccff,
+        metalness: 0,
+        roughness: 0,
+        transmission: 0.9,
+        transparent: true,
+        opacity: 0.5
+    });
+    
+    const wheelMaterial = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.8,
+        roughness: 0.2
+    });
+    
+    const rimMaterial = new THREE.MeshStandardMaterial({
+        color: category === 'electric' ? config.accentColor : (category === 'sports' ? 0xff0000 : 0xcccccc),
+        metalness: 1,
+        roughness: 0.1,
+        emissive: category === 'electric' ? config.accentColor : 0x000000,
+        emissiveIntensity: category === 'electric' ? 0.2 : 0
+    });
+    
+    // Car body dimensions
+    const bodyWidth = config.bodyWidth;
+    const bodyHeight = config.bodyHeight;
+    const bodyLength = config.bodyLength;
+    
+    // Main body
+    const bodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyLength);
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.5;
+    body.castShadow = true;
+    viewerCurrentCar.add(body);
+    
+    // Cabin/Roof
+    let cabinWidth, cabinHeight, cabinLength, cabinZOffset;
+    
+    if (category === 'sports') {
+        cabinWidth = bodyWidth - 0.4;
+        cabinHeight = 0.5;
+        cabinLength = bodyLength * 0.5;
+        cabinZOffset = -0.5;
+    } else if (category === 'suv') {
+        cabinWidth = bodyWidth - 0.2;
+        cabinHeight = 1.3;
+        cabinLength = bodyLength * 0.65;
+        cabinZOffset = 0.2;
+    } else if (category === 'sedan') {
+        cabinWidth = bodyWidth - 0.3;
+        cabinHeight = 0.9;
+        cabinLength = bodyLength * 0.58;
+        cabinZOffset = -0.1;
+    } else if (category === 'electric') {
+        cabinWidth = bodyWidth - 0.25;
+        cabinHeight = 0.7;
+        cabinLength = bodyLength * 0.62;
+        cabinZOffset = 0;
+    } else {
+        cabinWidth = bodyWidth - 0.2;
+        cabinHeight = 0.9;
+        cabinLength = bodyLength * 0.6;
+        cabinZOffset = 0;
+    }
+    
+    const cabinGeometry = new THREE.BoxGeometry(cabinWidth, cabinHeight, cabinLength);
+    const cabin = new THREE.Mesh(cabinGeometry, bodyMaterial);
+    cabin.position.y = bodyHeight / 2 + cabinHeight / 2 + 0.5;
+    cabin.position.z = cabinZOffset;
+    cabin.castShadow = true;
+    viewerCurrentCar.add(cabin);
+    
+    // Windows
+    const windowGeometry = new THREE.BoxGeometry(cabinWidth - 0.1, cabinHeight - 0.2, cabinLength - 0.2);
+    const windows = new THREE.Mesh(windowGeometry, glassMaterial);
+    windows.position.copy(cabin.position);
+    viewerCurrentCar.add(windows);
+    
+    // Hood
+    const hoodGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight * 0.7, bodyLength * 0.35);
+    const hood = new THREE.Mesh(hoodGeometry, bodyMaterial);
+    hood.position.y = 0.5;
+    hood.position.z = bodyLength * 0.425;
+    hood.castShadow = true;
+    viewerCurrentCar.add(hood);
+    
+    // Trunk
+    const trunkGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight * 0.6, bodyLength * 0.25);
+    const trunk = new THREE.Mesh(trunkGeometry, bodyMaterial);
+    trunk.position.y = 0.5;
+    trunk.position.z = -bodyLength * 0.45;
+    trunk.castShadow = true;
+    viewerCurrentCar.add(trunk);
+    
+    // Wheels
+    let wheelRadius, wheelWidth;
+    
+    if (category === 'sports') {
+        wheelRadius = 0.42;
+        wheelWidth = 0.35;
+    } else if (category === 'suv') {
+        wheelRadius = 0.5;
+        wheelWidth = 0.35;
+    } else if (category === 'sedan') {
+        wheelRadius = 0.38;
+        wheelWidth = 0.28;
+    } else if (category === 'electric') {
+        wheelRadius = 0.4;
+        wheelWidth = 0.25;
+    } else {
+        wheelRadius = 0.4;
+        wheelWidth = 0.3;
+    }
+    
+    const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 32);
+    const rimGeometry = new THREE.CylinderGeometry(wheelRadius * 0.6, wheelRadius * 0.6, wheelWidth + 0.05, 6);
+    
+    const wheelPositions = [
+        { x: bodyWidth / 2 + 0.15, z: bodyLength * 0.35 },
+        { x: -bodyWidth / 2 - 0.15, z: bodyLength * 0.35 },
+        { x: bodyWidth / 2 + 0.15, z: -bodyLength * 0.3 },
+        { x: -bodyWidth / 2 - 0.15, z: -bodyLength * 0.3 }
+    ];
+    
+    wheelPositions.forEach(pos => {
+        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(pos.x, 0, pos.z);
+        wheel.castShadow = true;
+        viewerCurrentCar.add(wheel);
+        
+        const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+        rim.rotation.z = Math.PI / 2;
+        rim.position.set(pos.x, 0, pos.z);
+        viewerCurrentCar.add(rim);
+    });
+    
+    // Headlights
+    const headlightGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const headlightMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffcc,
+        emissive: 0xffffaa,
+        emissiveIntensity: 0.5
+    });
+    
+    const headlightLeft = new THREE.Mesh(headlightGeometry, headlightMaterial);
+    headlightLeft.position.set(-bodyWidth / 2 + 0.2, 0.6, bodyLength / 2 + 0.1);
+    viewerCurrentCar.add(headlightLeft);
+    
+    const headlightRight = new THREE.Mesh(headlightGeometry, headlightMaterial);
+    headlightRight.position.set(bodyWidth / 2 - 0.2, 0.6, bodyLength / 2 + 0.1);
+    viewerCurrentCar.add(headlightRight);
+    
+    // Taillights
+    const taillightMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 0.3
+    });
+    
+    const taillightLeft = new THREE.Mesh(headlightGeometry, taillightMaterial);
+    taillightLeft.position.set(-bodyWidth / 2 + 0.2, 0.6, -bodyLength / 2 - 0.1);
+    viewerCurrentCar.add(taillightLeft);
+    
+    const taillightRight = new THREE.Mesh(headlightGeometry, taillightMaterial);
+    taillightRight.position.set(bodyWidth / 2 - 0.2, 0.6, -bodyLength / 2 - 0.1);
+    viewerCurrentCar.add(taillightRight);
+    
+    // Category-specific features
+    if (category === 'sports') {
+        // Large rear spoiler
+        const spoilerGeometry = new THREE.BoxGeometry(bodyWidth - 0.2, 0.15, 0.8);
+        const spoiler = new THREE.Mesh(spoilerGeometry, accentMaterial);
+        spoiler.position.set(0, 1.0, -bodyLength / 2 + 0.4);
+        viewerCurrentCar.add(spoiler);
+        
+        const spoilerSupport1 = new THREE.BoxGeometry(0.12, 0.4, 0.12);
+        const support1 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
+        support1.position.set(-0.7, 0.8, -bodyLength / 2 + 0.4);
+        viewerCurrentCar.add(support1);
+        
+        const support2 = new THREE.Mesh(spoilerSupport1, bodyMaterial);
+        support2.position.set(0.7, 0.8, -bodyLength / 2 + 0.4);
+        viewerCurrentCar.add(support2);
+        
+        // Racing stripes
+        const stripeGeometry = new THREE.BoxGeometry(0.4, 0.02, bodyLength * 0.9);
+        const stripe = new THREE.Mesh(stripeGeometry, accentMaterial);
+        stripe.position.set(0, bodyHeight + 0.51, 0);
+        viewerCurrentCar.add(stripe);
+        
+        // Front air intakes
+        const intakeGeometry = new THREE.BoxGeometry(0.6, 0.25, 0.1);
+        const intakeLeft = new THREE.Mesh(intakeGeometry, new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        intakeLeft.position.set(-0.5, 0.4, bodyLength / 2 + 0.05);
+        viewerCurrentCar.add(intakeLeft);
+        
+        const intakeRight = new THREE.Mesh(intakeGeometry, new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        intakeRight.position.set(0.5, 0.4, bodyLength / 2 + 0.05);
+        viewerCurrentCar.add(intakeRight);
+    }
+    
+    if (category === 'suv') {
+        // Chrome trim
+        const trimGeometry = new THREE.BoxGeometry(bodyWidth + 0.08, 0.12, bodyLength);
+        const trim = new THREE.Mesh(trimGeometry, rimMaterial);
+        trim.position.set(0, 0.25, 0);
+        viewerCurrentCar.add(trim);
+        
+        // Roof rack
+        const rackGeometry = new THREE.BoxGeometry(bodyWidth - 0.4, 0.08, bodyLength * 0.6);
+        const rack = new THREE.Mesh(rackGeometry, new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            metalness: 0.8,
+            roughness: 0.3
+        }));
+        rack.position.set(0, bodyHeight / 2 + cabinHeight + 0.54, 0);
+        viewerCurrentCar.add(rack);
+        
+        // Side steps
+        const stepGeometry = new THREE.BoxGeometry(0.15, 0.05, bodyLength * 0.7);
+        const stepLeft = new THREE.Mesh(stepGeometry, rimMaterial);
+        stepLeft.position.set(bodyWidth / 2 + 0.1, -0.15, 0);
+        viewerCurrentCar.add(stepLeft);
+        
+        const stepRight = new THREE.Mesh(stepGeometry, rimMaterial);
+        stepRight.position.set(-bodyWidth / 2 - 0.1, -0.15, 0);
+        viewerCurrentCar.add(stepRight);
+    }
+    
+    if (category === 'sedan') {
+        // Chrome side accent lines
+        const sideAccentGeometry = new THREE.BoxGeometry(0.06, 0.15, bodyLength * 0.75);
+        const sideAccent1 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent1.position.set(bodyWidth / 2 + 0.05, 0.65, 0);
+        viewerCurrentCar.add(sideAccent1);
+        
+        const sideAccent2 = new THREE.Mesh(sideAccentGeometry, accentMaterial);
+        sideAccent2.position.set(-bodyWidth / 2 - 0.05, 0.65, 0);
+        viewerCurrentCar.add(sideAccent2);
+        
+        // Chrome grille
+        const grilleGeometry = new THREE.BoxGeometry(bodyWidth * 0.7, 0.3, 0.08);
+        const grille = new THREE.Mesh(grilleGeometry, accentMaterial);
+        grille.position.set(0, 0.5, bodyLength / 2 + 0.04);
+        viewerCurrentCar.add(grille);
+    }
+    
+    if (category === 'electric') {
+        // Bright underglow
+        const underglowGeometry = new THREE.BoxGeometry(bodyWidth - 0.15, 0.08, bodyLength - 0.4);
+        const underglowMaterial = new THREE.MeshStandardMaterial({
+            color: config.accentColor,
+            emissive: config.accentColor,
+            emissiveIntensity: 1.5,
+            transparent: true,
+            opacity: 0.9
+        });
+        const underglow = new THREE.Mesh(underglowGeometry, underglowMaterial);
+        underglow.position.set(0, -0.25, 0);
+        viewerCurrentCar.add(underglow);
+        
+        // Futuristic front diffuser
+        const diffuserGeometry = new THREE.BoxGeometry(bodyWidth * 0.8, 0.15, 0.25);
+        const diffuser = new THREE.Mesh(diffuserGeometry, accentMaterial);
+        diffuser.position.set(0, 0.2, bodyLength / 2 + 0.1);
+        viewerCurrentCar.add(diffuser);
+        
+        // Aerodynamic side blades
+        const bladeGeometry = new THREE.BoxGeometry(0.08, 0.3, 1.0);
+        const bladeLeft = new THREE.Mesh(bladeGeometry, accentMaterial);
+        bladeLeft.position.set(bodyWidth / 2 + 0.04, 0.5, bodyLength * 0.15);
+        viewerCurrentCar.add(bladeLeft);
+        
+        const bladeRight = new THREE.Mesh(bladeGeometry, accentMaterial);
+        bladeRight.position.set(-bodyWidth / 2 - 0.04, 0.5, bodyLength * 0.15);
+        viewerCurrentCar.add(bladeRight);
+    }
+    
+    if (category === 'luxury') {
+        // Chrome grille
+        const grilleGeometry = new THREE.BoxGeometry(bodyWidth * 0.8, 0.4, 0.1);
+        const grilleMaterial = new THREE.MeshStandardMaterial({
+            color: config.accentColor,
+            metalness: 1,
+            roughness: 0.1
+        });
+        const grille = new THREE.Mesh(grilleGeometry, grilleMaterial);
+        grille.position.set(0, 0.6, bodyLength / 2 + 0.05);
+        viewerCurrentCar.add(grille);
+        
+        // Side chrome trim
+        const trimGeometry = new THREE.BoxGeometry(0.08, 0.15, bodyLength * 0.8);
+        const trimLeft = new THREE.Mesh(trimGeometry, grilleMaterial);
+        trimLeft.position.set(bodyWidth / 2 + 0.04, 0.7, 0);
+        viewerCurrentCar.add(trimLeft);
+        
+        const trimRight = new THREE.Mesh(trimGeometry, grilleMaterial);
+        trimRight.position.set(-bodyWidth / 2 - 0.04, 0.7, 0);
+        viewerCurrentCar.add(trimRight);
+    }
+    
+    viewerCurrentCar.position.y = 0;
+    viewerScene.add(viewerCurrentCar);
+}
+
+// Animation loop
+function animateViewer() {
+    viewerAnimationId = requestAnimationFrame(animateViewer);
+    
+    if (viewerCurrentCar) {
+        viewerCurrentCar.rotation.y += (viewerTargetRotationY - viewerCurrentCar.rotation.y) * 0.1;
+        viewerCurrentCar.rotation.x += (viewerTargetRotationX - viewerCurrentCar.rotation.x) * 0.1;
+        
+        if (!viewerIsDragging) {
+            viewerCurrentCar.rotation.y += 0.002;
+            viewerCurrentCar.position.y = Math.sin(Date.now() * 0.001) * 0.05;
+        }
+    }
+    
+    viewerRenderer.render(viewerScene, viewerCamera);
+}
+
+// Mouse Controls
+function onViewerMouseDown(event) {
+    viewerIsDragging = true;
+    viewerPreviousMouseX = event.clientX;
+    viewerPreviousMouseY = event.clientY;
+}
+
+function onViewerMouseMove(event) {
+    if (viewerIsDragging && viewerCurrentCar) {
+        const deltaX = event.clientX - viewerPreviousMouseX;
+        const deltaY = event.clientY - viewerPreviousMouseY;
+        
+        viewerTargetRotationY += deltaX * 0.01;
+        viewerTargetRotationX += deltaY * 0.01;
+        viewerTargetRotationX = Math.max(-Math.PI / 6, Math.min(Math.PI / 6, viewerTargetRotationX));
+        
+        viewerPreviousMouseX = event.clientX;
+        viewerPreviousMouseY = event.clientY;
+    }
+}
+
+function onViewerMouseUp() {
+    viewerIsDragging = false;
+}
+
+// Touch Controls
+function onViewerTouchStart(event) {
+    event.preventDefault();
+    if (event.touches.length === 1) {
+        viewerPreviousMouseX = event.touches[0].clientX;
+        viewerPreviousMouseY = event.touches[0].clientY;
+        viewerIsDragging = true;
+    }
+}
+
+function onViewerTouchMove(event) {
+    event.preventDefault();
+    if (viewerIsDragging && event.touches.length === 1 && viewerCurrentCar) {
+        const deltaX = event.touches[0].clientX - viewerPreviousMouseX;
+        const deltaY = event.touches[0].clientY - viewerPreviousMouseY;
+        
+        viewerTargetRotationY += deltaX * 0.01;
+        viewerTargetRotationX += deltaY * 0.01;
+        viewerTargetRotationX = Math.max(-Math.PI / 6, Math.min(Math.PI / 6, viewerTargetRotationX));
+        
+        viewerPreviousMouseX = event.touches[0].clientX;
+        viewerPreviousMouseY = event.touches[0].clientY;
+    }
+}
+
+function onViewerTouchEnd() {
+    viewerIsDragging = false;
+}
+
+// Zoom Control
+function onViewerWheel(event) {
+    event.preventDefault();
+    const delta = event.deltaY * 0.01;
+    viewerCamera.position.z += delta;
+    viewerCamera.position.z = Math.max(8, Math.min(20, viewerCamera.position.z));
+}
+
+// Set Camera View
+function setViewerView(view) {
+    const distance = 12;
+    const height = 4;
+    
+    let newPosition;
+    switch(view) {
+        case 'front':
+            newPosition = { x: 0, y: height, z: distance };
+            break;
+        case 'side':
+            newPosition = { x: distance, y: height, z: 0 };
+            break;
+        case 'rear':
+            newPosition = { x: 0, y: height, z: -distance };
+            break;
+        case 'top':
+            newPosition = { x: 0, y: distance + 5, z: 5 };
+            break;
+        default:
+            newPosition = { x: 8, y: height, z: 12 };
+    }
+    
+    animateViewerCamera(newPosition);
+}
+
+function animateViewerCamera(targetPosition) {
+    const startPosition = {
+        x: viewerCamera.position.x,
+        y: viewerCamera.position.y,
+        z: viewerCamera.position.z
+    };
+    
+    let progress = 0;
+    const duration = 1000;
+    const startTime = Date.now();
+    
+    function update() {
+        const elapsed = Date.now() - startTime;
+        progress = Math.min(elapsed / duration, 1);
+        
+        const eased = 1 - Math.pow(1 - progress, 3);
+        
+        viewerCamera.position.x = startPosition.x + (targetPosition.x - startPosition.x) * eased;
+        viewerCamera.position.y = startPosition.y + (targetPosition.y - startPosition.y) * eased;
+        viewerCamera.position.z = startPosition.z + (targetPosition.z - startPosition.z) * eased;
+        viewerCamera.lookAt(0, 0, 0);
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        }
+    }
+    
+    update();
 }
 
 // Close modal when clicking outside
