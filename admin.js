@@ -298,10 +298,21 @@ function handleLogout(e) {
     document.getElementById('loginForm').reset();
 }
 
-// Get all models (default + custom)
+// Get all models (default + custom, excluding deleted defaults)
 function getAllModels() {
     const customModels = JSON.parse(localStorage.getItem('customModels') || '[]');
-    return [...defaultModels, ...customModels];
+    const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaults') || '[]');
+    const editedDefaults = JSON.parse(localStorage.getItem('editedDefaults') || '[]');
+    
+    // Filter out deleted defaults and replace with edited versions
+    const activeDefaults = defaultModels
+        .filter(model => !deletedDefaults.includes(model.id))
+        .map(model => {
+            const edited = editedDefaults.find(e => e.id === model.id);
+            return edited || model;
+        });
+    
+    return [...activeDefaults, ...customModels];
 }
 
 // Get only custom models
@@ -331,13 +342,25 @@ function loadModels(filter = 'all') {
             <td>$${model.price.toLocaleString()}</td>
             <td>$${model.rentPrice}/day</td>
             <td><span class="type-badge ${model.isDefault ? 'default' : 'custom'}">${model.isDefault ? 'Default' : 'Custom'}</span></td>
-            <td class="action-buttons">
-                ${!model.isDefault ? `
-                    <button class="btn-edit" onclick="editModel(${model.id})">Edit</button>
-                    <button class="btn-delete" onclick="deleteModel(${model.id})">Delete</button>
-                ` : '<span class="text-muted">-</span>'}
-            </td>
+            <td class="action-buttons"></td>
         `;
+        
+        // Add action buttons for all models
+        const actionsCell = row.querySelector('.action-buttons');
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-edit';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => editModel(model.id);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = () => deleteModel(model.id);
+        
+        actionsCell.appendChild(editBtn);
+        actionsCell.appendChild(deleteBtn);
+        
         tbody.appendChild(row);
     });
 }
@@ -375,11 +398,11 @@ function closeModelForm() {
 
 // Edit model
 function editModel(id) {
-    const customModels = getCustomModels();
-    const model = customModels.find(m => m.id === id);
+    const allModels = getAllModels();
+    const model = allModels.find(m => m.id === id);
     
     if (!model) {
-        alert('Only custom models can be edited');
+        alert('Model not found');
         return;
     }
     
@@ -410,9 +433,27 @@ function deleteModel(id) {
         return;
     }
     
-    let customModels = getCustomModels();
-    customModels = customModels.filter(m => m.id !== id);
-    saveCustomModels(customModels);
+    const allModels = getAllModels();
+    const model = allModels.find(m => m.id === id);
+    
+    if (!model) {
+        alert('Model not found');
+        return;
+    }
+    
+    // Store deleted default models IDs
+    let deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaults') || '[]');
+    
+    if (model.isDefault) {
+        // Mark default model as deleted
+        deletedDefaults.push(id);
+        localStorage.setItem('deletedDefaults', JSON.stringify(deletedDefaults));
+    } else {
+        // Remove from custom models
+        let customModels = getCustomModels();
+        customModels = customModels.filter(m => m.id !== id);
+        saveCustomModels(customModels);
+    }
     
     loadModels();
     updateStatistics();
@@ -424,7 +465,6 @@ function deleteModel(id) {
 function handleModelSubmit(e) {
     e.preventDefault();
     
-    const customModels = getCustomModels();
     const allModels = getAllModels();
     
     // Get form values
@@ -448,15 +488,36 @@ function handleModelSubmit(e) {
     };
     
     if (currentEditId) {
-        // Edit existing
-        const index = customModels.findIndex(m => m.id === currentEditId);
-        customModels[index] = modelData;
+        // Check if editing a default model
+        const originalModel = defaultModels.find(m => m.id === currentEditId);
+        
+        if (originalModel) {
+            // Editing a default model - store in editedDefaults
+            modelData.isDefault = true; // Keep the flag
+            let editedDefaults = JSON.parse(localStorage.getItem('editedDefaults') || '[]');
+            const editIndex = editedDefaults.findIndex(m => m.id === currentEditId);
+            
+            if (editIndex >= 0) {
+                editedDefaults[editIndex] = modelData;
+            } else {
+                editedDefaults.push(modelData);
+            }
+            
+            localStorage.setItem('editedDefaults', JSON.stringify(editedDefaults));
+        } else {
+            // Editing a custom model
+            let customModels = getCustomModels();
+            const customIndex = customModels.findIndex(m => m.id === currentEditId);
+            customModels[customIndex] = modelData;
+            saveCustomModels(customModels);
+        }
     } else {
-        // Add new
+        // Add new custom model
+        let customModels = getCustomModels();
         customModels.push(modelData);
+        saveCustomModels(customModels);
     }
     
-    saveCustomModels(customModels);
     closeModelForm();
     loadModels();
     updateStatistics();

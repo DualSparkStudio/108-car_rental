@@ -258,10 +258,21 @@ const defaultCars = [
     }
 ];
 
-// Get all cars (default + custom from localStorage)
+// Get all cars (default + custom from localStorage, excluding deleted defaults)
 function getAllCars() {
     const customModels = JSON.parse(localStorage.getItem('customModels') || '[]');
-    return [...defaultCars, ...customModels];
+    const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaults') || '[]');
+    const editedDefaults = JSON.parse(localStorage.getItem('editedDefaults') || '[]');
+    
+    // Filter out deleted defaults and replace with edited versions
+    const activeDefaults = defaultCars
+        .filter(model => !deletedDefaults.includes(model.id))
+        .map(model => {
+            const edited = editedDefaults.find(e => e.id === model.id);
+            return edited || model;
+        });
+    
+    return [...activeDefaults, ...customModels];
 }
 
 // Make allCars available globally
