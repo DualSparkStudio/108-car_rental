@@ -154,6 +154,14 @@
                     </div>
                     
                     <div class="form-group full-width">
+                        <label for="model3dUrl">3D Model URL (Optional - GLTF/GLB format)</label>
+                        <input type="url" id="model3dUrl" placeholder="https://example.com/car-model.glb (leave empty for procedural model)">
+                        <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.5rem;">
+                            💡 Add a .glb or .gltf file URL for realistic 3D model. Leave empty to use auto-generated model.
+                        </small>
+                    </div>
+                    
+                    <div class="form-group full-width">
                         <label for="modelDescription">Description *</label>
                         <textarea id="modelDescription" rows="3" placeholder="Enter model description..." required></textarea>
                     </div>
@@ -216,6 +224,20 @@
             <!-- 3D Canvas Container -->
             <div class="viewer-canvas-container">
                 <canvas id="viewerCanvas3d"></canvas>
+                
+                <!-- Loading Overlay -->
+                <div id="viewerLoadingOverlay" class="viewer-loading-overlay">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <h3>Loading 3D Model</h3>
+                        <p>This may take 5-10 seconds...</p>
+                        <div class="loading-progress">
+                            <div class="progress-bar" id="viewerProgressBar"></div>
+                        </div>
+                        <p class="loading-status" id="viewerLoadingStatus">Initializing...</p>
+                    </div>
+                </div>
+                
                 <div class="viewer-controls">
                     <div class="control-hint">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -246,6 +268,8 @@
 
     <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTFLoader for loading 3D models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

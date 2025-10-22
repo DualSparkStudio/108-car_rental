@@ -466,6 +466,7 @@ function editModel(id) {
     document.getElementById('modelPrice').value = model.price;
     document.getElementById('modelRentPrice').value = model.rentPrice;
     document.getElementById('modelImage').value = model.image;
+    document.getElementById('model3dUrl').value = model.modelUrl || '';
     document.getElementById('modelDescription').value = model.description;
     
     // Fill specs
@@ -520,6 +521,8 @@ function handleModelSubmit(e) {
     const allModels = getAllModels();
     
     // Get form values
+    const model3dUrl = document.getElementById('model3dUrl').value.trim();
+    
     const modelData = {
         id: currentEditId || (allModels.length > 0 ? Math.max(...allModels.map(m => m.id)) + 1 : 1),
         name: document.getElementById('modelName').value,
@@ -527,6 +530,7 @@ function handleModelSubmit(e) {
         price: parseInt(document.getElementById('modelPrice').value),
         rentPrice: parseInt(document.getElementById('modelRentPrice').value),
         image: document.getElementById('modelImage').value,
+        modelUrl: model3dUrl || undefined, // Only include if provided
         description: document.getElementById('modelDescription').value,
         specs: {
             topSpeed: document.getElementById('specTopSpeed').value,
@@ -643,10 +647,51 @@ function closeViewer() {
     document.body.style.overflow = 'auto';
 }
 
+// Show loading overlay
+function showViewerLoading() {
+    const overlay = document.getElementById('viewerLoadingOverlay');
+    const progressBar = document.getElementById('viewerProgressBar');
+    const status = document.getElementById('viewerLoadingStatus');
+    
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        progressBar.style.width = '0%';
+        status.textContent = 'Initializing...';
+    }
+}
+
+// Hide loading overlay
+function hideViewerLoading() {
+    const overlay = document.getElementById('viewerLoadingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+}
+
+// Update loading progress
+function updateViewerProgress(progress, status) {
+    const progressBar = document.getElementById('viewerProgressBar');
+    const statusText = document.getElementById('viewerLoadingStatus');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+    }
+    if (statusText && status) {
+        statusText.textContent = status;
+    }
+}
+
 // Initialize 3D Viewer
 function init3DViewer(model) {
     const canvas = document.getElementById('viewerCanvas3d');
     if (!canvas) return;
+    
+    // Show loading screen
+    showViewerLoading();
     
     // Clean up existing scene
     if (viewerRenderer) {
@@ -726,9 +771,6 @@ function init3DViewer(model) {
     gridHelper.position.y = -0.99;
     viewerScene.add(gridHelper);
     
-    // Create car
-    create3DViewerCar(model.category);
-    
     // Event Listeners
     canvas.addEventListener('mousedown', onViewerMouseDown);
     canvas.addEventListener('mousemove', onViewerMouseMove);
@@ -738,8 +780,83 @@ function init3DViewer(model) {
     canvas.addEventListener('touchmove', onViewerTouchMove, { passive: false });
     canvas.addEventListener('touchend', onViewerTouchEnd);
     
+    // Try to load 3D model or fallback to procedural
+    load3DModel(model);
+    
     // Start animation
     animateViewer();
+}
+
+// Load 3D Model (GLTF) or fallback to procedural
+function load3DModel(model) {
+    updateViewerProgress(10, 'Checking for 3D model...');
+    
+    // Check if model has a 3D model URL
+    if (model.modelUrl && typeof THREE.GLTFLoader !== 'undefined') {
+        updateViewerProgress(20, 'Loading 3D model file...');
+        
+        const loader = new THREE.GLTFLoader();
+        
+        loader.load(
+            model.modelUrl,
+            // Success callback
+            function(gltf) {
+                updateViewerProgress(80, 'Processing model...');
+                
+                if (viewerCurrentCar) {
+                    viewerScene.remove(viewerCurrentCar);
+                }
+                
+                viewerCurrentCar = gltf.scene;
+                
+                // Scale and position the loaded model
+                const box = new THREE.Box3().setFromObject(viewerCurrentCar);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                // Scale to fit
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 4 / maxDim;
+                viewerCurrentCar.scale.set(scale, scale, scale);
+                
+                // Center the model
+                viewerCurrentCar.position.x = -center.x * scale;
+                viewerCurrentCar.position.y = -box.min.y * scale;
+                viewerCurrentCar.position.z = -center.z * scale;
+                
+                // Enable shadows
+                viewerCurrentCar.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                viewerScene.add(viewerCurrentCar);
+                
+                updateViewerProgress(100, 'Model loaded successfully!');
+                setTimeout(() => hideViewerLoading(), 500);
+            },
+            // Progress callback
+            function(xhr) {
+                const percentComplete = (xhr.loaded / xhr.total) * 60 + 20;
+                updateViewerProgress(percentComplete, `Loading: ${Math.round(percentComplete)}%`);
+            },
+            // Error callback
+            function(error) {
+                console.warn('Failed to load 3D model, using procedural model:', error);
+                updateViewerProgress(50, 'Using fallback model...');
+                create3DViewerCar(model.category);
+                setTimeout(() => hideViewerLoading(), 800);
+            }
+        );
+    } else {
+        // No model URL, use procedural generation
+        updateViewerProgress(50, 'Generating procedural model...');
+        create3DViewerCar(model.category);
+        updateViewerProgress(100, 'Model ready!');
+        setTimeout(() => hideViewerLoading(), 800);
+    }
 }
 
 // Create 3D Car Model for Viewer
